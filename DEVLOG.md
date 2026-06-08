@@ -1,5 +1,51 @@
 # Devlog — Photocard Generator
 
+_A series on building a browser tool to print K-pop photocards exactly right._
+
+---
+
+## Introduction
+
+I print my own K-pop photocards. This is the log of building a proper tool to do it.
+
+### The hobby
+
+Photocards are small trading cards — 55 × 85 mm — that come packaged with K-pop albums and merch. Fans collect them, trade them, and hunt specific members or versions the same way you'd chase a rare Pokémon card. Part of the culture is also making your own: custom cards of eras that didn't get official prints, photosets from concert footage, cards of niche groups that never made it to wide distribution. You print them, cut them, sleeve them. They feel real because they are real — same size, same card stock, same weight in your hand.
+
+### The manual reality
+
+My current workflow lives in a Canva file I built years ago. It has bleed zones, cut lines, and alignment guides baked in — a US Letter sheet laid out for duplex printing, with slots for front and back pairs. It works. It's also a slog every single time.
+
+Every new batch means: find the source images, crop each one to fit the bleed area without cutting off faces or text, drag it onto the Canva canvas, nudge it until it aligns with the guides, repeat for the back, repeat for every card in the set, export, print, check the duplex alignment, sometimes reprint. If I want two copies of one card and one of another, I'm manually duplicating and repositioning. If the image is portrait but slightly off-ratio, I'm eyeballing it. The process is the same every time, and it never gets faster.
+
+### The itch to automate
+
+At some point I caught myself re-cropping the same image for the third time because I'd nudged it two pixels off and the bleed looked wrong, and the thought that stopped me was: _I build software for a living. Why am I doing this by hand?_
+
+This is a fixed, repeatable process. The card dimensions don't change. The sheet layout doesn't change. The duplex registration doesn't change. Every step I do manually in Canva is a step a tool could do deterministically, in seconds, with no eyeballing required. The only variable is the images themselves — and even that's just a crop with a known target size.
+
+### The vision
+
+Upload your images → crop each one to exact card spec with bleed → arrange your deck → generate a print-ready double-sided US Letter PDF. Goodbye Canva.
+
+### The catch — why it's not trivial
+
+If this were just "put images on a PDF," it'd be a weekend script. The interesting parts are:
+
+**Hitting exact physical dimensions from a browser.** A 55 mm card has to be exactly 55 mm when it comes out of the printer, which means the PDF has to encode dimensions precisely in points (72 pt/inch), not pixels, and the image data has to be rasterized at 300 DPI. Getting mm → px → pt to agree without rounding errors is where the math lives.
+
+**Bleed, trim, and safe zones.** The image extends to 59 × 89 mm (bleed) so there's no white edge if the cut drifts slightly. The cut target is 55 × 85 mm. Anything important — text, faces, key art — has to stay inside 51 × 81 mm (safe zone). The crop tool has to enforce all three simultaneously.
+
+**Front/back duplex alignment.** Printing double-sided means the front of card 1 and the back of card 1 have to land on opposite sides of the same sheet in the right positions for the page to fold or flip correctly. Get the layout wrong and every card comes out with a misaligned back.
+
+**Two-hole calibration.** The clever bit: rather than trusting that every printer's duplex alignment is perfect, the plan is to build a calibration sheet — print it once, punch two holes through both layers, measure the offset, and feed that offset back in as a correction. Mechanical registration instead of trial and error.
+
+That's enough to earn a devlog.
+
+### What's ahead
+
+This series will cover locking the print spec and why those numbers are what they are, the architecture decisions for a purely client-side app, building the crop tool, the PDF generation pipeline, and the calibration system. Entry one is below.
+
 ---
 
 ## 2026-06-08 — Epic 1: Foundation & Data Model (MAT-144)
