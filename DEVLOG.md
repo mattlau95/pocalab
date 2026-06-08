@@ -90,6 +90,28 @@ The same component and utility are used for both front and back. The caller deci
 
 `App.tsx` now manages a two-step flow: idle (upload zone + card grid) and crop (full-screen crop editor). On confirm, `URL.revokeObjectURL` cleans up the object URL immediately, and the card is added to the in-memory deck with `front` set. The card grid in the idle view shows thumbnails of confirmed fronts.
 
+### Iteration: rotate and zoom controls
+
+After first pass, two missing interactions were obvious: there was no way to rotate a portrait image that came in landscape, and zoom was scroll-only with no visible feedback.
+
+Added a controls panel below the viewport with two rows:
+
+**Rotate** — ↺ / ↻ buttons snap 90° in either direction for the common case (fixing a sideways scan). A slider between them covers fine rotation from −180° to +180°, with a live degree readout. The snap buttons are the part that gets used 95% of the time; the slider is there for tilted photos.
+
+**Size** — − / + buttons step zoom by 10%. A slider covers the full 1×–4× range with a percentage readout. Scroll in the viewport still works as before for people who expect it.
+
+The canvas export needed updating too. react-easy-crop gives crop coordinates in rotated image space, so the export utility now draws the source image rotated onto an intermediate canvas first, then crops from that. Without this step, a rotated image would export with the wrong region selected.
+
+### Iteration: distinct guide lines and labeled key
+
+The first guide pass used dashed white and amber lines that were easy to miss against a busy image. Replaced with three visually distinct colors:
+
+- **Cyan** — bleed (now rendered as an explicit overlay, not just implied by the crop frame border)
+- **Red** — trim / cut line
+- **Green** — safe zone
+
+All three are 2 px solid. The old compact legend was replaced with a key panel: each row shows a matching colored swatch, the zone name and dimensions, and a plain-English description of what the zone means. Useful for anyone who hasn't printed photocards before and doesn't know what "bleed" means.
+
 ---
 
 ## 2026-06-08 — Epic 1: Foundation & Data Model (MAT-144)
