@@ -7,18 +7,40 @@ interface PixelArea {
   height: number
 }
 
-export async function getCroppedDataUrl(imageSrc: string, pixelCrop: PixelArea): Promise<string> {
+export async function getCroppedDataUrl(
+  imageSrc: string,
+  pixelCrop: PixelArea,
+  rotation = 0,
+): Promise<string> {
   const image = await loadImage(imageSrc)
-  const canvas = document.createElement('canvas')
-  canvas.width = CARD_BLEED.widthPx
-  canvas.height = CARD_BLEED.heightPx
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(
-    image,
+
+  // Draw the source image rotated onto an intermediate canvas so that
+  // pixelCrop coordinates (which react-easy-crop gives in rotated space) are correct.
+  const rotRad = (rotation * Math.PI) / 180
+  const bBoxW = Math.abs(Math.cos(rotRad) * image.width) + Math.abs(Math.sin(rotRad) * image.height)
+  const bBoxH = Math.abs(Math.sin(rotRad) * image.width) + Math.abs(Math.cos(rotRad) * image.height)
+
+  const rotCanvas = document.createElement('canvas')
+  rotCanvas.width = bBoxW
+  rotCanvas.height = bBoxH
+  const rotCtx = rotCanvas.getContext('2d')!
+  rotCtx.translate(bBoxW / 2, bBoxH / 2)
+  rotCtx.rotate(rotRad)
+  rotCtx.translate(-image.width / 2, -image.height / 2)
+  rotCtx.drawImage(image, 0, 0)
+
+  // Crop from the rotated canvas and scale to the 300 DPI bleed dimensions.
+  const out = document.createElement('canvas')
+  out.width = CARD_BLEED.widthPx
+  out.height = CARD_BLEED.heightPx
+  const outCtx = out.getContext('2d')!
+  outCtx.drawImage(
+    rotCanvas,
     pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
-    0, 0, canvas.width, canvas.height,
+    0, 0, out.width, out.height,
   )
-  return canvas.toDataURL('image/png')
+
+  return out.toDataURL('image/png')
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
