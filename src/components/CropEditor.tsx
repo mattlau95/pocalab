@@ -70,6 +70,7 @@ export function CropEditor({ imageSrc, onConfirm, onCancel }: Props) {
 
         <div className="crop-guides-layer" aria-hidden>
           <div className="crop-guides-frame" style={{ width: DISPLAY_CROP.width, height: DISPLAY_CROP.height }}>
+            <div className="guide guide--bleed" style={{ width: '100%', height: '100%' }} />
             <div className="guide guide--trim" style={{ width: trimW, height: trimH }} />
             <div className="guide guide--safe" style={{ width: safeW, height: safeH }} />
           </div>
@@ -121,10 +122,22 @@ export function CropEditor({ imageSrc, onConfirm, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="crop-legend">
-        <span className="legend-item legend-item--bleed">Bleed 59×89 mm</span>
-        <span className="legend-item legend-item--trim">Trim 55×85 mm</span>
-        <span className="legend-item legend-item--safe">Safe 51×81 mm</span>
+      <div className="crop-key">
+        <div className="key-row">
+          <span className="key-swatch key-swatch--bleed" />
+          <span className="key-label">Bleed <span className="key-dim">59×89 mm</span></span>
+          <span className="key-desc">Full print area — image extends to this edge</span>
+        </div>
+        <div className="key-row">
+          <span className="key-swatch key-swatch--trim" />
+          <span className="key-label">Trim <span className="key-dim">55×85 mm</span></span>
+          <span className="key-desc">Cut line — final card edge after trimming</span>
+        </div>
+        <div className="key-row">
+          <span className="key-swatch key-swatch--safe" />
+          <span className="key-label">Safe <span className="key-dim">51×81 mm</span></span>
+          <span className="key-desc">Keep faces and text inside this zone</span>
+        </div>
       </div>
 
       {isLowRes && (
