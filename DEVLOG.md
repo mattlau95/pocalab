@@ -48,6 +48,50 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-08 — Epic 2: Crop Tool (MAT-145)
+
+The crop tool is the core of the whole app — everything else depends on it producing a correctly sized image. The goal: given an arbitrary photo, let the user frame it within the bleed bounds, then export exactly 697×1051 px of source image data.
+
+### MAT-155 — Image upload
+
+`ImageUpload` is a drag-drop zone with a file picker fallback. Validates on the client before anything touches the DOM: accepted types are JPEG, PNG, and WebP; max file size is 50 MB. Rejected files get an inline error. Accepted files produce a `File` object — the component doesn't touch URLs or data, that's the caller's job.
+
+The 50 MB cap is conservative — most source images are under 10 MB — but it prevents someone from accidentally dropping a raw file from a mirrorless camera and wondering why the tab froze.
+
+### MAT-156 — Crop UI with bleed / trim / safe guides
+
+Three nested overlays rendered on top of the crop viewport, all driven by the same `CARD_*` constants from `dimensions.ts`:
+
+- **Bleed (59×89 mm)** — the crop frame itself. The exported image fills to here.
+- **Trim (55×85 mm)** — dashed white line at 93.2% of the bleed frame. Cut target.
+- **Safe zone (51×81 mm)** — amber line at 86.4% of the bleed frame. Keep faces and text inside this.
+
+The guides are absolutely positioned divs centered over the crop frame using percentages derived from the mm constants. They're `pointer-events: none` so they don't interfere with panning.
+
+### MAT-157 — Pan / zoom / position
+
+Handled by [react-easy-crop](https://github.com/ValentinoUberti/react-easy-crop). The crop frame is fixed at 295×445 px on screen (59:89 ratio at 5 px/mm). The image pans and zooms underneath it. `minZoom=1` enforces that the image always covers the full bleed area — no empty edges in the export.
+
+The library outputs `croppedAreaPixels: { x, y, width, height }` — the rectangle of source pixels that maps to the crop frame. That's all we need for the export step.
+
+### MAT-158 — Low-res warning
+
+When `croppedAreaPixels.width < 697 || croppedAreaPixels.height < 1051`, the source image doesn't have enough pixels for a 300 DPI output at card size. A red warning banner appears. It doesn't block the export — the user might intentionally be printing a smaller card, or they might accept a slightly soft result — but they're informed.
+
+This fires most often when someone zooms in heavily on a low-resolution source.
+
+### MAT-159 — Canvas export at 300 DPI
+
+`getCroppedDataUrl` in `src/utils/cropImage.ts`: creates an offscreen 697×1051 canvas, draws the `croppedAreaPixels` region of the source image onto it scaled to fill, and returns a PNG data URL. The canvas dimensions match `CARD_BLEED.widthPx` / `heightPx` from the constants — again, one source of truth.
+
+The same component and utility are used for both front and back. The caller decides which card slot gets the result.
+
+### App wiring
+
+`App.tsx` now manages a two-step flow: idle (upload zone + card grid) and crop (full-screen crop editor). On confirm, `URL.revokeObjectURL` cleans up the object URL immediately, and the card is added to the in-memory deck with `front` set. The card grid in the idle view shows thumbnails of confirmed fronts.
+
+---
+
 ## 2026-06-08 — Epic 1: Foundation & Data Model (MAT-144)
 
 ### What this app is
