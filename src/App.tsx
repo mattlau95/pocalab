@@ -11,8 +11,8 @@ import type { Card } from './models/card'
 
 type Step =
   | { id: 'idle' }
-  | { id: 'crop-front'; imageSrc: string }
-  | { id: 'upload-back'; pendingCard: Card }
+  | { id: 'crop-front'; imageSrc: string; editingPending?: Card }
+  | { id: 'upload-back'; pendingCard: Card; pendingBackSrc?: string }
   | { id: 'crop-back'; imageSrc: string; pendingCard: Card }
   | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back' }
 
@@ -22,7 +22,27 @@ function App() {
   useBeforeUnload(deck.cards.length > 0 || step.id !== 'idle')
 
   function handleCancel() {
-    if (step.id === 'crop-front' || step.id === 'crop-back' || step.id === 'edit-side') {
+    if (step.id === 'crop-front') {
+      // Data URLs don't need revocation; object URLs do
+      if (!step.imageSrc.startsWith('data:')) URL.revokeObjectURL(step.imageSrc)
+      if (step.editingPending) {
+        setStep({ id: 'upload-back', pendingCard: step.editingPending })
+      } else {
+        setStep({ id: 'idle' })
+      }
+      return
+    }
+    if (step.id === 'upload-back') {
+      if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
+      setStep({ id: 'idle' })
+      return
+    }
+    if (step.id === 'crop-back') {
+      // Don't revoke — preserve as pendingBackSrc so the upload-back screen can warn before replacing
+      setStep({ id: 'upload-back', pendingCard: step.pendingCard, pendingBackSrc: step.imageSrc })
+      return
+    }
+    if (step.id === 'edit-side') {
       URL.revokeObjectURL(step.imageSrc)
     }
     setStep({ id: 'idle' })
@@ -35,15 +55,23 @@ function App() {
 
   function handleFrontConfirm(dataUrl: string) {
     if (step.id !== 'crop-front') return
-    URL.revokeObjectURL(step.imageSrc)
-    const card = createCard()
-    card.front = dataUrl
-    setStep({ id: 'upload-back', pendingCard: card })
+    if (!step.imageSrc.startsWith('data:')) URL.revokeObjectURL(step.imageSrc)
+    if (step.editingPending) {
+      setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl } })
+    } else {
+      const card = createCard()
+      card.front = dataUrl
+      setStep({ id: 'upload-back', pendingCard: card })
+    }
   }
 
   // Back upload → crop
   function handleBackFile(file: File) {
     if (step.id !== 'upload-back') return
+    if (step.pendingBackSrc) {
+      if (!window.confirm('Replace the back image you already selected?')) return
+      URL.revokeObjectURL(step.pendingBackSrc)
+    }
     setStep({ id: 'crop-back', imageSrc: URL.createObjectURL(file), pendingCard: step.pendingCard })
   }
 
@@ -76,7 +104,7 @@ function App() {
         <main className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
-            label="Step 1 of 2 — Crop the front"
+            label={step.editingPending ? 'Edit front' : 'Step 1 of 2 — Crop the front'}
             onConfirm={handleFrontConfirm}
             onCancel={handleCancel}
           />
@@ -93,10 +121,33 @@ function App() {
         </header>
         <main className="app-main">
           <div className="upload-back">
-            <p className="upload-back__step">Step 2 of 2 — Add the card back</p>
-            <ImageUpload onFile={handleBackFile} />
-            <div className="upload-back__actions">
-              <button className="btn btn--ghost" onClick={handleCancel}>Cancel</button>
+            <div className="upload-back__preview">
+              <div className="upload-back__thumb">
+                {step.pendingCard.front && (
+                  <img src={step.pendingCard.front} alt="Card front" />
+                )}
+              </div>
+              <span className="upload-back__front-label">Front</span>
+              <button
+                className="btn btn--ghost upload-back__edit-btn"
+                onClick={() =>
+                  setStep({
+                    id: 'crop-front',
+                    imageSrc: step.pendingCard.front!,
+                    editingPending: step.pendingCard,
+                  })
+                }
+              >
+                Edit
+              </button>
+            </div>
+
+            <div className="upload-back__content">
+              <p className="upload-back__step">Step 2 of 2 — Add the card back</p>
+              <ImageUpload onFile={handleBackFile} />
+              <div className="upload-back__actions">
+                <button className="btn btn--ghost" onClick={handleCancel}>Cancel</button>
+              </div>
             </div>
           </div>
         </main>

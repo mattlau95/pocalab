@@ -45,8 +45,61 @@
 
 /* Back upload step */
 .upload-back {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* MAT-218: side-by-side layout on wide viewports */
+@media (min-width: 640px) {
+  .upload-back {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 28px;
+  }
+
+  .upload-back__content {
+    flex: 1;
+  }
+}
+
+.upload-back__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.upload-back__thumb {
+  width: 80px;
+  height: 120px;
+  border-radius: 6px;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.upload-back__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-back__front-label {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.upload-back__edit-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.upload-back__content {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -56,6 +109,7 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text-h);
+  margin: 0;
 }
 
 .upload-back__actions {

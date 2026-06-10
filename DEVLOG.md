@@ -48,6 +48,46 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-10 — Crop editor: seven UX improvements (MAT-218–224)
+
+Seven features across the crop editor and the add-card flow.
+
+### MAT-222 — Disable scroll-to-zoom
+
+Mouse wheel scroll inside the viewport was zooming the image, which conflicted with normal page scroll and felt jarring. Added `zoomWithScroll={false}` to the `<Cropper>` component. Zoom is now keyboard- and control-only: the − / + step buttons, the size slider, or pinch on mobile.
+
+### MAT-219 — Fix "Background" label overlap
+
+The `.control-label` width was hardcoded at `44px` — wide enough for "Rotate" and "Size" but not "Background". Widened to `80px`, pushing the control row right enough to clear the text without wasting space.
+
+### MAT-220 — Center button
+
+Added a **Center** pill button at the bottom of the controls panel. It calls `setCrop({ x: 0, y: 0 })` and immediately pushes an undo snapshot so the action is reversible. Useful after panning away or after applying a rotation that shifts the image off-center.
+
+### MAT-221 — Undo / redo
+
+Undo and Redo pills sit beside Center in the controls panel. History is stored in refs rather than state (avoids stale-closure issues in event handlers). The snapshot type captures `{ crop, zoom, rotation, bgColor }`.
+
+Snapshots are pushed on discrete actions: rotate buttons, zoom step buttons, center, and eyedropper pick. For sliders, a snapshot is pushed on `onPointerUp` using the DOM element's final value — this way dragging doesn't flood the history stack, but the settled position is always captured. The initial state (zoom=1, rotation=0, center) is the first history entry, so Undo is disabled on load and the user can always return to the starting state.
+
+### MAT-218 — Front preview on the upload-back step
+
+The add-card flow's second screen now shows a thumbnail of the front that was just cropped, with a "Front" label and an **Edit** button underneath. Clicking Edit re-enters the crop editor with the front's data URL as the image source and an `editingPending` flag on the step state. On confirm, the updated data URL is patched back into the pending card and the flow returns to the upload-back screen without creating a new card.
+
+Cancel from crop-front (when editing a pending card) correctly returns to upload-back rather than discarding the session. Cancel from crop-back (before back is confirmed) also returns to upload-back, preserving the pending back image as `pendingBackSrc` so a "Replace?" confirmation can fire if the user picks a different back file later.
+
+### MAT-223 — Rule-of-thirds grid toggle
+
+Added a **Grid** toggle pill in the controls panel. When active, four 1 px semi-transparent white lines appear at the 33% and 66% marks both horizontally and vertically, rendered as absolutely-positioned divs inside the guide overlay (below the bleed/trim/safe borders so the zone colors remain visible). The grid state resets each time a new image is loaded.
+
+### MAT-224 — Responsive label + key layout
+
+On viewports ≥ 900 px the crop editor switches from a flex column to a CSS Grid with two columns: the main column (viewport, controls, actions at 600 px) and a side column that holds the key panel beside the step label. On narrow viewports the key panel remains below the controls as before — no DOM duplication needed, just `grid-template-areas` reassigning positions based on the media query.
+
+The `max-width` of the crop editor was expanded from `600px` to `960px` to accommodate the two-column layout.
+
+---
+
 ## 2026-06-10 — Epic 3: Deck Builder (MAT-146)
 
 With the crop tool in place, the next step is assembling a deck — building a card from two crops, viewing the deck, managing copy counts, and wiring up the remove and edit flows.

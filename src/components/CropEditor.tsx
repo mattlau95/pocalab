@@ -16,6 +16,7 @@ const MAX_ZOOM = 4
 const DEFAULT_BG = '#ffffff'
 
 interface Area { x: number; y: number; width: number; height: number }
+interface Snapshot { crop: { x: number; y: number }; zoom: number; rotation: number; bgColor: string }
 
 interface Props {
   imageSrc: string
@@ -29,11 +30,44 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [bgColor, setBgColor] = useState(DEFAULT_BG)
+  const [showGrid, setShowGrid] = useState(false)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isLowRes, setIsLowRes] = useState(false)
   const [exporting, setExporting] = useState(false)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
+
+  // Undo / redo — stored in refs so handlers always see current values
+  const historyRef = useRef<Snapshot[]>([{ crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }])
+  const histIdxRef = useRef(0)
+  const [histTick, setHistTick] = useState(0) // incremented to re-render button disabled states
+
+  function pushHistory(snap: Snapshot) {
+    historyRef.current = [...historyRef.current.slice(0, histIdxRef.current + 1), snap]
+    histIdxRef.current = historyRef.current.length - 1
+    setHistTick(t => t + 1)
+  }
+
+  function undo() {
+    if (histIdxRef.current <= 0) return
+    histIdxRef.current--
+    const s = historyRef.current[histIdxRef.current]
+    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor)
+    setHistTick(t => t + 1)
+  }
+
+  function redo() {
+    if (histIdxRef.current >= historyRef.current.length - 1) return
+    histIdxRef.current++
+    const s = historyRef.current[histIdxRef.current]
+    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor)
+    setHistTick(t => t + 1)
+  }
+
+  // histTick is read here so React includes it in the render dependency — if we
+  // never reference it the compiler may strip the setState calls entirely.
+  const canUndo = histTick >= 0 && histIdxRef.current > 0
+  const canRedo = histTick >= 0 && histIdxRef.current < historyRef.current.length - 1
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels)
@@ -52,7 +86,21 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   }
 
   function rotate(deg: number) {
-    setRotation((r) => ((r + deg) % 360 + 360) % 360)
+    const newRot = ((rotation + deg) % 360 + 360) % 360
+    setRotation(newRot)
+    pushHistory({ crop, zoom, rotation: newRot, bgColor })
+  }
+
+  function stepZoom(delta: number) {
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(zoom + delta).toFixed(2)))
+    setZoom(newZoom)
+    pushHistory({ crop, zoom: newZoom, rotation, bgColor })
+  }
+
+  function center() {
+    const c = { x: 0, y: 0 }
+    setCrop(c)
+    pushHistory({ crop: c, zoom, rotation, bgColor })
   }
 
   async function handleEyeDropper() {
@@ -61,6 +109,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
       const dropper = new window.EyeDropper()
       const result = await dropper.open()
       setBgColor(result.sRGBHex)
+      pushHistory({ crop, zoom, rotation, bgColor: result.sRGBHex })
     } catch {
       // user cancelled
     }
@@ -70,7 +119,6 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const trimH = `${(CARD_TRIM.heightMm / CARD_BLEED.heightMm) * 100}%`
   const safeW = `${(CARD_SAFE.widthMm / CARD_BLEED.widthMm) * 100}%`
   const safeH = `${(CARD_SAFE.heightMm / CARD_BLEED.heightMm) * 100}%`
-
   const displayRotation = rotation > 180 ? rotation - 360 : rotation
 
   return (
@@ -88,6 +136,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           restrictPosition={false}
+          zoomWithScroll={false}
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onRotationChange={setRotation}
@@ -97,6 +146,14 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
         <div className="crop-guides-layer" aria-hidden>
           <div className="crop-guides-frame" style={{ width: DISPLAY_CROP.width, height: DISPLAY_CROP.height }}>
+            {showGrid && (
+              <div className="guide guide--grid" style={{ width: '100%', height: '100%' }}>
+                <div className="grid-line grid-line--v1" />
+                <div className="grid-line grid-line--v2" />
+                <div className="grid-line grid-line--h1" />
+                <div className="grid-line grid-line--h2" />
+              </div>
+            )}
             <div className="guide guide--bleed" style={{ width: '100%', height: '100%' }} />
             <div className="guide guide--trim" style={{ width: trimW, height: trimH }} />
             <div className="guide guide--safe" style={{ width: safeW, height: safeH }} />
@@ -115,6 +172,10 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
               max={180}
               value={displayRotation}
               onChange={(e) => setRotation(((+e.target.value) % 360 + 360) % 360)}
+              onPointerUp={(e) => {
+                const r = (((+e.currentTarget.value) % 360) + 360) % 360
+                pushHistory({ crop, zoom, rotation: r, bgColor })
+              }}
               className="ctrl-slider"
             />
             <button className="ctrl-btn" onClick={() => rotate(90)} title="Rotate 90° right">↻</button>
@@ -125,11 +186,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         <div className="control-group">
           <label className="control-label">Size</label>
           <div className="control-row">
-            <button
-              className="ctrl-btn"
-              onClick={() => setZoom((z) => Math.max(MIN_ZOOM, +(z - 0.1).toFixed(2)))}
-              disabled={zoom <= MIN_ZOOM}
-            >−</button>
+            <button className="ctrl-btn" onClick={() => stepZoom(-0.1)} disabled={zoom <= MIN_ZOOM}>−</button>
             <input
               type="range"
               min={MIN_ZOOM}
@@ -137,13 +194,10 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
               step={0.01}
               value={zoom}
               onChange={(e) => setZoom(+e.target.value)}
+              onPointerUp={(e) => pushHistory({ crop, zoom: +e.currentTarget.value, rotation, bgColor })}
               className="ctrl-slider"
             />
-            <button
-              className="ctrl-btn"
-              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, +(z + 0.1).toFixed(2)))}
-              disabled={zoom >= MAX_ZOOM}
-            >+</button>
+            <button className="ctrl-btn" onClick={() => stepZoom(0.1)} disabled={zoom >= MAX_ZOOM}>+</button>
             <span className="ctrl-value">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
@@ -167,12 +221,25 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
             {hasEyeDropper && (
               <button className="ctrl-btn" onClick={handleEyeDropper} title="Sample color from image">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 22l4-4M18.37 2.63a2.12 2.12 0 013 3L8 19l-6 1 1-6L18.37 2.63z"/>
+                  <path d="M2 22l4-4M18.37 2.63a2.12 2.12 0 013 3L8 19l-6 1 1-6L18.37 2.63z" />
                 </svg>
               </button>
             )}
             <span className="ctrl-value" style={{ fontSize: '11px', letterSpacing: '0.02em' }}>{bgColor}</span>
           </div>
+        </div>
+
+        <div className="ctrl-pills">
+          <button className="ctrl-pill" onClick={center} title="Center image in frame">Center</button>
+          <button className="ctrl-pill" onClick={undo} disabled={!canUndo} title="Undo">Undo</button>
+          <button className="ctrl-pill" onClick={redo} disabled={!canRedo} title="Redo">Redo</button>
+          <button
+            className={`ctrl-pill${showGrid ? ' ctrl-pill--on' : ''}`}
+            onClick={() => setShowGrid(g => !g)}
+            title="Toggle rule-of-thirds grid"
+          >
+            Grid
+          </button>
         </div>
       </div>
 

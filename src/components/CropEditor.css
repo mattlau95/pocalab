@@ -6,10 +6,36 @@
   margin: 0 auto;
 }
 
+/* MAT-224: on wide viewports, place label + key side-by-side using CSS Grid */
+@media (min-width: 900px) {
+  .crop-editor {
+    display: grid;
+    max-width: 960px;
+    grid-template-columns: 600px 1fr;
+    grid-template-areas:
+      "label key"
+      "viewport key"
+      "controls ."
+      "lowres ."
+      "actions .";
+    column-gap: 32px;
+    row-gap: 16px;
+    align-items: start;
+  }
+
+  .crop-editor__label  { grid-area: label; }
+  .crop-viewport       { grid-area: viewport; }
+  .crop-controls       { grid-area: controls; }
+  .crop-key            { grid-area: key; align-self: start; margin-top: 0; }
+  .crop-low-res        { grid-area: lowres; }
+  .crop-actions        { grid-area: actions; }
+}
+
 .crop-editor__label {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-h);
+  margin: 0;
 }
 
 /* react-easy-crop requires a positioned container with explicit height */
@@ -43,6 +69,21 @@
   transform: translate(-50%, -50%);
 }
 
+/* Rule-of-thirds grid: sits below bleed/trim/safe guides */
+.guide--grid {
+  z-index: -1;
+}
+
+.grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.grid-line--v1 { left: 33.333%; top: 0; width: 1px; height: 100%; }
+.grid-line--v2 { left: 66.667%; top: 0; width: 1px; height: 100%; }
+.grid-line--h1 { top: 33.333%; left: 0; height: 1px; width: 100%; }
+.grid-line--h2 { top: 66.667%; left: 0; height: 1px; width: 100%; }
+
 .guide--bleed {
   border: 2px solid rgba(6, 182, 212, 0.9);
 }
@@ -70,11 +111,12 @@
   gap: 10px;
 }
 
+/* MAT-219: widened from 44px to fit "Background" without overlap */
 .control-label {
   font-size: 12px;
   font-weight: 500;
   color: var(--text);
-  width: 44px;
+  width: 80px;
   flex-shrink: 0;
 }
 
@@ -141,6 +183,44 @@
   text-align: right;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* MAT-220 / MAT-221 / MAT-223: pill buttons for Center, Undo, Redo, Grid */
+.ctrl-pills {
+  display: flex;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  flex-wrap: wrap;
+}
+
+.ctrl-pill {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.ctrl-pill:hover:not(:disabled) {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
+
+.ctrl-pill:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ctrl-pill--on {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
 }
 
 .crop-key {
