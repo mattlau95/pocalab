@@ -24,29 +24,66 @@
   opacity: 0.7;
 }
 
-.card-grid {
+.app-main {
+  flex: 1;
+  padding: 24px;
+}
+
+.deck-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 24px;
 }
 
-.card-thumb {
-  width: 80px;
-  height: 121px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--border);
-  flex-shrink: 0;
+.deck-full {
+  font-size: 14px;
+  color: var(--text);
+  opacity: 0.7;
+  margin-top: 8px;
 }
 
-.card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+/* Back upload step */
+.upload-back {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.app-main {
-  flex: 1;
-  padding: 24px;
+.upload-back__step {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.upload-back__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
 }

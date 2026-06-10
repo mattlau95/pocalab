@@ -6,11 +6,17 @@
   margin: 0 auto;
 }
 
+.crop-editor__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
 /* react-easy-crop requires a positioned container with explicit height */
+/* background is set inline by CropEditor to match the chosen bgColor */
 .crop-viewport {
   position: relative;
   height: 520px;
-  background: #111;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -111,6 +117,21 @@
   flex: 1;
   accent-color: #6366f1;
   cursor: pointer;
+}
+
+.ctrl-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: border-color 0.1s;
+}
+
+.ctrl-swatch:hover {
+  border-color: #6366f1;
 }
 
 .ctrl-value {
