@@ -48,6 +48,60 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-10 — Epic 3: Deck Builder (MAT-146)
+
+With the crop tool in place, the next step is assembling a deck — building a card from two crops, viewing the deck, managing copy counts, and wiring up the remove and edit flows.
+
+### MAT-160 — Build a card from front + back crops
+
+The add-card flow is now a two-step sequence managed by a step machine in `App.tsx`:
+
+1. **Upload front** → crop editor labeled "Step 1 of 2 — Crop the front"
+2. **Upload back** → crop editor labeled "Step 2 of 2 — Crop the back"
+3. Confirm back → card is added to the deck, return to idle
+
+The pending card lives in step state (`{ id: 'upload-back', pendingCard: Card }`) between the two crops, so it never touches the deck until both sides are confirmed. Cancel at any point revokes the object URL and discards the pending card.
+
+The same `CropEditor` component is reused for both sides — it just receives a `label` prop indicating which step it's on.
+
+### MAT-161 — Deck view with thumbnails and copy stepper
+
+`DeckCard` is a new component that represents a single card in the deck. It shows both thumbnails side by side (60×90 px each, bleed aspect ratio) with a "Front / Back" label and an Edit button under each side. Below the thumbnails is a copy stepper: − count + with the current count in the center.
+
+The deck header shows `X / 9 cards` where X is the total copy count across all cards, not the number of unique cards. That's the number that actually matters — it's what determines how many card slots the sheet will use.
+
+### MAT-162 — Edit, remove, and cap enforcement
+
+**Edit**: Clicking Edit on a side opens a hidden `<input type="file">`. Picking a file transitions to an `edit-side` step, runs the crop editor, then calls `updateCard(id, { [side]: dataUrl })` — a new reducer action that patches just the front or back of an existing card without touching anything else.
+
+**Remove**: Each card has a × button at the top-right corner. Calls `removeCard`, which deletes both the card and its copies entry from state.
+
+**Cap fix**: The original `ADD_CARD` guard checked `deck.cards.length >= 9` — that caps unique cards, not total copy slots. Fixed to check `sumCopies(deck.copies) >= 9`. `SET_COPIES` also now enforces the ceiling: it computes the new total and returns the current state unmodified if incrementing would push past 9. The stepper's + button is disabled when `copies >= maxCopies`, where `maxCopies = 9 - total + currentCopiesForThisCard`.
+
+When the deck is full the upload zone is hidden and replaced with a short "Deck is full" message.
+
+---
+
+## 2026-06-10 — Crop editor: background color and sub-100% zoom
+
+Two related additions to the crop editor that open up a new class of source images: PNGs with transparency and images smaller than the card frame.
+
+### Background color
+
+The crop viewport previously had a hardcoded `#111` background. Now it accepts a `bgColor` state (default `#ffffff`) passed as an inline style on the container. The same value is forwarded to `getCroppedDataUrl` and applied as a `fillRect` on the output canvas before the image is drawn — so any transparent pixels in the source, or any canvas area outside the image bounds, export with the chosen background color rather than black or alpha.
+
+The controls panel has a new Background row: a color swatch button that triggers a hidden `<input type="color">`, showing the current color and the hex value as a readout.
+
+If the browser supports the [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper) (Chrome/Edge), a dropper button appears next to the swatch. It lets you sample any pixel on screen — including directly from the crop viewport — and sets that as the background color. Useful when the card image has a border or matte color you want to match. On unsupported browsers the button simply doesn't render.
+
+### Zoom below 100%
+
+`MIN_ZOOM` was 1, meaning the image always had to fill the entire bleed area. Changed to 0.1 — the image can now be placed at 10% size or anywhere in between, leaving the background color visible in the empty areas.
+
+`restrictPosition={false}` was added to the Cropper so that when the image is smaller than the crop frame it can be freely positioned anywhere, rather than being snapped to center. This matters for cases like placing a small logo or sticker at a specific spot on a colored background.
+
+---
+
 ## 2026-06-08 — Epic 2: Crop Tool (MAT-145)
 
 The crop tool is the core of the whole app — everything else depends on it producing a correctly sized image. The goal: given an arbitrary photo, let the user frame it within the bleed bounds, then export exactly 697×1051 px of source image data.
