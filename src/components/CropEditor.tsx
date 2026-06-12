@@ -34,6 +34,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isLowRes, setIsLowRes] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
 
@@ -76,10 +77,13 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return
+    setExportError(null)
     setExporting(true)
     try {
       const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels, rotation, bgColor)
       onConfirm(dataUrl)
+    } catch {
+      setExportError('Something went wrong exporting your crop — please try again.')
     } finally {
       setExporting(false)
     }
@@ -163,10 +167,11 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
       <div className="crop-controls">
         <div className="control-group">
-          <label className="control-label">Rotate</label>
+          <label className="control-label" htmlFor="crop-rotate">Rotate</label>
           <div className="control-row">
             <button className="ctrl-btn" onClick={() => rotate(-90)} title="Rotate 90° left">↺</button>
             <input
+              id="crop-rotate"
               type="range"
               min={-180}
               max={180}
@@ -184,10 +189,11 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         </div>
 
         <div className="control-group">
-          <label className="control-label">Size</label>
+          <label className="control-label" htmlFor="crop-zoom">Size</label>
           <div className="control-row">
             <button className="ctrl-btn" onClick={() => stepZoom(-0.1)} disabled={zoom <= MIN_ZOOM}>−</button>
             <input
+              id="crop-zoom"
               type="range"
               min={MIN_ZOOM}
               max={MAX_ZOOM}
@@ -265,6 +271,10 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         <p className="crop-low-res">
           Source resolution is below 300 DPI at card size — printed result may appear soft.
         </p>
+      )}
+
+      {exportError && (
+        <p className="crop-low-res">{exportError}</p>
       )}
 
       <div className="crop-actions">

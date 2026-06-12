@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 164px;
+  width: clamp(140px, 45vw, 164px);
   flex-shrink: 0;
 }
 
@@ -14,8 +14,8 @@
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--bg);

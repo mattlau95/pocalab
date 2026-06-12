@@ -27,7 +27,7 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
     <div className="deck-card">
       <button
         className="deck-card__remove"
-        onClick={onRemove}
+        onClick={() => { if (window.confirm('Remove this card from your deck?')) onRemove() }}
         title="Remove card"
         aria-label="Remove card"
       >

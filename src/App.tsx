@@ -19,6 +19,7 @@ type Step =
 function App() {
   const { deck, total, addCard, removeCard, setCopies, updateCard } = useDeck()
   const [step, setStep] = useState<Step>({ id: 'idle' })
+  const [cardAdded, setCardAdded] = useState(false)
   useBeforeUnload(deck.cards.length > 0 || step.id !== 'idle')
 
   function handleCancel() {
@@ -33,6 +34,7 @@ function App() {
       return
     }
     if (step.id === 'upload-back') {
+      if (!window.confirm('Discard this card? Your cropped front image will be lost.')) return
       if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
       setStep({ id: 'idle' })
       return
@@ -81,6 +83,8 @@ function App() {
     const card = { ...step.pendingCard, back: dataUrl }
     addCard(card)
     setStep({ id: 'idle' })
+    setCardAdded(true)
+    setTimeout(() => setCardAdded(false), 2000)
   }
 
   // Edit a side of an existing card
@@ -146,7 +150,7 @@ function App() {
               <p className="upload-back__step">Step 2 of 2 — Add the card back</p>
               <ImageUpload onFile={handleBackFile} />
               <div className="upload-back__actions">
-                <button className="btn btn--ghost" onClick={handleCancel}>Cancel</button>
+                <button className="btn btn--ghost" onClick={handleCancel}>Start over</button>
               </div>
             </div>
           </div>
@@ -225,6 +229,8 @@ function App() {
           <p className="deck-full">Deck is full — remove a card or reduce copies to add more.</p>
         )}
       </main>
+
+      {cardAdded && <div className="toast">Card added to deck</div>}
     </div>
   )
 }
