@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
 import { CARD_BLEED, CARD_TRIM, CARD_SAFE } from '../utils/dimensions'
 import { getCroppedDataUrl } from '../utils/cropImage'
@@ -35,8 +35,25 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [isLowRes, setIsLowRes] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
+
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img
+      setImgSize({ w, h })
+      // MAT-290: auto-fill if image exactly matches the bleed export dimensions
+      if (w === CARD_BLEED.widthPx && h === CARD_BLEED.heightPx) {
+        const fitScale = Math.min(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
+        const fillScale = Math.max(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
+        setZoom(Math.min(MAX_ZOOM, fillScale / fitScale))
+        setCrop({ x: 0, y: 0 })
+      }
+    }
+    img.src = imageSrc
+  }, [imageSrc])
 
   // Undo / redo — stored in refs so handlers always see current values
   const historyRef = useRef<Snapshot[]>([{ crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }])
@@ -105,6 +122,18 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
     const c = { x: 0, y: 0 }
     setCrop(c)
     pushHistory({ crop: c, zoom, rotation, bgColor })
+  }
+
+  function fillToBleed() {
+    if (!imgSize) return
+    const { w, h } = imgSize
+    const fitScale = Math.min(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
+    const fillScale = Math.max(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fillScale / fitScale))
+    const c = { x: 0, y: 0 }
+    setZoom(newZoom)
+    setCrop(c)
+    pushHistory({ crop: c, zoom: newZoom, rotation, bgColor })
   }
 
   async function handleEyeDropper() {
@@ -237,6 +266,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
         <div className="ctrl-pills">
           <button className="ctrl-pill" onClick={center} title="Center image in frame">Center</button>
+          <button className="ctrl-pill" onClick={fillToBleed} disabled={!imgSize} title="Fill bleed frame with no white space">Fill</button>
           <button className="ctrl-pill" onClick={undo} disabled={!canUndo} title="Undo">Undo</button>
           <button className="ctrl-pill" onClick={redo} disabled={!canRedo} title="Redo">Redo</button>
           <button

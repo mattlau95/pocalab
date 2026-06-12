@@ -1,5 +1,8 @@
-import { PDFDocument, degrees } from 'pdf-lib'
-import { computeFrontSlots, computeBackSlots, drawCropMarks, BLEED_W, BLEED_H } from './layout'
+import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib'
+import {
+  computeFrontSlots, computeBackSlots, drawCropMarks,
+  BLEED_W, BLEED_H, LETTER_W, LETTER_H, MARGIN_X, MARGIN_Y, mmToPt,
+} from './layout'
 
 export type PdfSlot = { front: string | null; back: string | null }
 
@@ -24,11 +27,13 @@ function readCalibration(): Calibration {
 export async function createPhotocardPdf(slots: PdfSlot[]): Promise<Uint8Array> {
   const cal = readCalibration()
   const doc = await PDFDocument.create()
-  const frontPage = doc.addPage([612, 792])
-  const backPage = doc.addPage([612, 792])
+  const helvetica = await doc.embedFont(StandardFonts.Helvetica)
+  const frontPage = doc.addPage([LETTER_W, LETTER_H])
+  const backPage = doc.addPage([LETTER_W, LETTER_H])
 
   const frontSlots = computeFrontSlots()
   const backSlots = computeBackSlots()
+  const gray = rgb(0.5, 0.5, 0.5)
 
   for (let i = 0; i < Math.min(slots.length, 9); i++) {
     const { front, back } = slots[i]
@@ -52,6 +57,31 @@ export async function createPhotocardPdf(slots: PdfSlot[]): Promise<Uint8Array> 
 
   drawCropMarks(frontPage)
   drawCropMarks(backPage)
+
+  // Orientation labels
+  const gridTop = MARGIN_Y + 3 * BLEED_H
+  const topLabel = 'TOP ↑'
+  const topLabelW = helvetica.widthOfTextAtSize(topLabel, 7)
+
+  for (const page of [frontPage, backPage]) {
+    page.drawText(topLabel, {
+      x: (LETTER_W - topLabelW) / 2,
+      y: gridTop + mmToPt(2),
+      size: 7,
+      font: helvetica,
+      color: gray,
+    })
+  }
+
+  // "flip long edge →" on right margin of front page, reading bottom-to-top
+  frontPage.drawText('flip long edge →', {
+    x: MARGIN_X + 3 * BLEED_W + mmToPt(4),
+    y: LETTER_H / 2,
+    size: 7,
+    font: helvetica,
+    color: gray,
+    rotate: degrees(90),
+  })
 
   return doc.save()
 }
