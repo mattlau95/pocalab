@@ -7,7 +7,18 @@ import { CropEditor } from './components/CropEditor'
 import { DeckCard } from './components/DeckCard'
 import { createCard } from './models/card'
 import { DECK_MAX_CARDS } from './models/deck'
+import { createPhotocardPdf } from './utils/pdf'
 import type { Card } from './models/card'
+import type { Deck } from './models/deck'
+
+function expandDeck(deck: Deck) {
+  const slots: { front: string | null; back: string | null }[] = []
+  for (const card of deck.cards) {
+    const count = deck.copies[card.id] ?? 1
+    for (let i = 0; i < count; i++) slots.push({ front: card.front, back: card.back })
+  }
+  return slots
+}
 
 type Step =
   | { id: 'idle' }
@@ -20,7 +31,27 @@ function App() {
   const { deck, total, addCard, removeCard, setCopies, updateCard } = useDeck()
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [cardAdded, setCardAdded] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   useBeforeUnload(deck.cards.length > 0 || step.id !== 'idle')
+
+  async function handleExport() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const bytes = await createPhotocardPdf(expandDeck(deck))
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'photocards.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError('PDF generation failed — please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function handleCancel() {
     if (step.id === 'crop-front') {
@@ -218,6 +249,15 @@ function App() {
                 onEditSide={(side, file) => handleEditFile(card.id, side, file)}
               />
             ))}
+          </div>
+        )}
+
+        {deck.cards.length > 0 && (
+          <div className="deck-actions">
+            <button className="btn btn--primary" onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Generating…' : 'Download PDF'}
+            </button>
+            {exportError && <p className="deck-actions__error">{exportError}</p>}
           </div>
         )}
 
