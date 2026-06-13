@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
 import { CARD_BLEED, CARD_TRIM, CARD_SAFE } from '../utils/dimensions'
 import { getCroppedDataUrl } from '../utils/cropImage'
+import type { CropState } from '../models/card'
 import './CropEditor.css'
 
 declare global {
@@ -18,20 +19,21 @@ const DEFAULT_BG = '#ffffff'
 const PAN_STEP = 8
 
 interface Area { x: number; y: number; width: number; height: number }
-interface Snapshot { crop: { x: number; y: number }; zoom: number; rotation: number; bgColor: string }
+type Snapshot = CropState
 
 interface Props {
   imageSrc: string
   label?: string
-  onConfirm: (dataUrl: string) => void
+  initialState?: CropState
+  onConfirm: (dataUrl: string, state: CropState) => void
   onCancel: () => void
 }
 
-export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [rotation, setRotation] = useState(0)
-  const [bgColor, setBgColor] = useState(DEFAULT_BG)
+export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel }: Props) {
+  const [crop, setCrop] = useState(initialState?.crop ?? { x: 0, y: 0 })
+  const [zoom, setZoom] = useState(initialState?.zoom ?? 1)
+  const [rotation, setRotation] = useState(initialState?.rotation ?? 0)
+  const [bgColor, setBgColor] = useState(initialState?.bgColor ?? DEFAULT_BG)
   const [showGrid, setShowGrid] = useState(false)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isLowRes, setIsLowRes] = useState(false)
@@ -88,7 +90,9 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   }, [imgSize, renderedMedia, cropSize])
 
   // Undo / redo — stored in refs so handlers always see current values
-  const historyRef = useRef<Snapshot[]>([{ crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }])
+  const historyRef = useRef<Snapshot[]>([
+    initialState ?? { crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }
+  ])
   const histIdxRef = useRef(0)
   const [histTick, setHistTick] = useState(0) // incremented to re-render button disabled states
 
@@ -131,7 +135,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
     setExporting(true)
     try {
       const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels, rotation, bgColor)
-      onConfirm(dataUrl)
+      onConfirm(dataUrl, { crop, zoom, rotation, bgColor })
     } catch {
       setExportError('Something went wrong exporting your crop — please try again.')
     } finally {

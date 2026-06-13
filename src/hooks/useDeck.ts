@@ -12,7 +12,7 @@ type Action =
   | { type: 'ADD_CARD'; card: Card }
   | { type: 'REMOVE_CARD'; id: string }
   | { type: 'SET_COPIES'; id: string; count: number }
-  | { type: 'UPDATE_CARD'; id: string; patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc'>> }
+  | { type: 'UPDATE_CARD'; id: string; patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc' | 'frontState' | 'backState'>> }
   | { type: 'SET_SHARED_BACK'; dataUrl: string | null }
 
 function deckReducer(deck: Deck, action: Action): Deck {
@@ -82,7 +82,7 @@ export function useDeck() {
       dispatch({ type: 'REMOVE_CARD', id })
     },
     setCopies: (id: string, count: number) => dispatch({ type: 'SET_COPIES', id, count }),
-    updateCard: (id: string, patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc'>>) =>
+    updateCard: (id: string, patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc' | 'frontState' | 'backState'>>) =>
       dispatch({ type: 'UPDATE_CARD', id, patch }),
     setSharedBack: (dataUrl: string | null) => dispatch({ type: 'SET_SHARED_BACK', dataUrl }),
   }

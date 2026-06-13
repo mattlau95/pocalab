@@ -8,7 +8,7 @@ import { DeckCard } from './components/DeckCard'
 import { createCard } from './models/card'
 import { DECK_MAX_CARDS } from './models/deck'
 import type { PaperSize } from './utils/pdf'
-import type { Card } from './models/card'
+import type { Card, CropState } from './models/card'
 import type { Deck } from './models/deck'
 
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
@@ -43,10 +43,10 @@ function expandDeck(deck: Deck) {
 
 type Step =
   | { id: 'idle' }
-  | { id: 'crop-front'; imageSrc: string; editingPending?: Card }
+  | { id: 'crop-front'; imageSrc: string; editingPending?: Card; initialState?: CropState }
   | { id: 'upload-back'; pendingCard: Card; pendingBackSrc?: string }
   | { id: 'crop-back'; imageSrc: string; pendingCard: Card; setAsShared: boolean }
-  | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back' }
+  | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back'; initialState?: CropState }
 
 function App() {
   const { deck, total, addCard, removeCard, setCopies, updateCard, setSharedBack } = useDeck()
@@ -118,16 +118,16 @@ function App() {
     setStep({ id: 'crop-front', imageSrc: URL.createObjectURL(file) })
   }
 
-  function handleFrontConfirm(dataUrl: string) {
+  function handleFrontConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'crop-front') return
     if (step.editingPending) {
-      // Re-editing front from upload-back step — imageSrc is a data URL, preserve existing frontSrc
-      setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl } })
+      // Re-editing front from upload-back step — preserve existing frontSrc, update state
+      setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl, frontState: state } })
     } else {
-      // New upload — keep the blob URL alive as frontSrc for future re-editing
+      // New upload — keep the blob URL and state for future re-editing
       const card = createCard()
       card.front = dataUrl
-      setStep({ id: 'upload-back', pendingCard: { ...card, frontSrc: step.imageSrc } })
+      setStep({ id: 'upload-back', pendingCard: { ...card, frontSrc: step.imageSrc, frontState: state } })
     }
   }
 
@@ -141,10 +141,9 @@ function App() {
     setStep({ id: 'crop-back', imageSrc: URL.createObjectURL(file), pendingCard: step.pendingCard, setAsShared })
   }
 
-  function handleBackConfirm(dataUrl: string) {
+  function handleBackConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'crop-back') return
-    // Keep blob URL alive as backSrc for future re-editing
-    const card = { ...step.pendingCard, back: dataUrl, backSrc: step.imageSrc }
+    const card = { ...step.pendingCard, back: dataUrl, backSrc: step.imageSrc, backState: state }
     addCard(card)
     if (step.setAsShared) setSharedBack(dataUrl)
     setSetAsShared(false)
@@ -173,10 +172,11 @@ function App() {
     if (!card) return
     const src = side === 'front' ? card.frontSrc : card.backSrc
     if (!src) return
-    setStep({ id: 'edit-side', imageSrc: src, cardId, side })
+    const savedState = side === 'front' ? card.frontState : card.backState
+    setStep({ id: 'edit-side', imageSrc: src, cardId, side, initialState: savedState })
   }
 
-  function handleEditConfirm(dataUrl: string) {
+  function handleEditConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'edit-side') return
     // Revoke the old stored src if we're replacing it with a different blob
     const card = deck.cards.find(c => c.id === step.cardId)
@@ -184,9 +184,9 @@ function App() {
     if (oldSrc && oldSrc !== step.imageSrc && oldSrc.startsWith('blob:')) {
       URL.revokeObjectURL(oldSrc)
     }
-    // Keep new imageSrc alive as the updated stored src
     const srcKey = step.side === 'front' ? 'frontSrc' : 'backSrc'
-    updateCard(step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc })
+    const stateKey = step.side === 'front' ? 'frontState' : 'backState'
+    updateCard(step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc, [stateKey]: state })
     setStep({ id: 'idle' })
   }
 
@@ -198,6 +198,7 @@ function App() {
           <CropEditor
             imageSrc={step.imageSrc}
             label={step.editingPending ? 'Edit front' : 'Step 1 of 2 — Crop the front'}
+            initialState={step.initialState}
             onConfirm={handleFrontConfirm}
             onCancel={handleCancel}
           />
@@ -226,6 +227,7 @@ function App() {
                     id: 'crop-front',
                     imageSrc: step.pendingCard.front!,
                     editingPending: step.pendingCard,
+                    initialState: step.pendingCard.frontState,
                   })
                 }
               >
@@ -305,6 +307,7 @@ function App() {
           <CropEditor
             imageSrc={step.imageSrc}
             label={`Edit ${step.side}`}
+            initialState={step.initialState}
             onConfirm={handleEditConfirm}
             onCancel={handleCancel}
           />
