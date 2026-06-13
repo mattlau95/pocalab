@@ -14,6 +14,7 @@ type Action =
   | { type: 'SET_COPIES'; id: string; count: number }
   | { type: 'UPDATE_CARD'; id: string; patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc' | 'frontState' | 'backState'>> }
   | { type: 'SET_SHARED_BACK'; dataUrl: string | null }
+  | { type: 'CLEAR_DECK' }
 
 function deckReducer(deck: Deck, action: Action): Deck {
   switch (action.type) {
@@ -43,6 +44,8 @@ function deckReducer(deck: Deck, action: Action): Deck {
       }
     case 'SET_SHARED_BACK':
       return { ...deck, sharedBack: action.dataUrl }
+    case 'CLEAR_DECK':
+      return createDeck()
     default:
       return deck
   }
@@ -85,5 +88,12 @@ export function useDeck() {
     updateCard: (id: string, patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc' | 'frontState' | 'backState'>>) =>
       dispatch({ type: 'UPDATE_CARD', id, patch }),
     setSharedBack: (dataUrl: string | null) => dispatch({ type: 'SET_SHARED_BACK', dataUrl }),
+    clearDeck: () => {
+      for (const card of deck.cards) {
+        if (card.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(card.frontSrc)
+        if (card.backSrc?.startsWith('blob:')) URL.revokeObjectURL(card.backSrc)
+      }
+      dispatch({ type: 'CLEAR_DECK' })
+    },
   }
 }

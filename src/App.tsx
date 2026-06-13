@@ -14,10 +14,10 @@ import type { Deck } from './models/deck'
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
 const PRINT_SERVICE_URL = 'https://www.stickermule.com/uses/business-cards'
 
-function AppHeader() {
+function AppHeader({ onHome }: { onHome?: () => void }) {
   return (
     <header className="app-header">
-      <div className="app-header__brand">
+      <div className="app-header__brand" onClick={onHome} style={onHome ? { cursor: 'pointer' } : undefined}>
         <div className="app-header__title-row">
           <img src="/icon-cards.png" className="app-header__icon-left" alt="" />
           <h1>pocalab</h1>
@@ -49,7 +49,7 @@ type Step =
   | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back'; initialState?: CropState }
 
 function App() {
-  const { deck, total, addCard, removeCard, setCopies, updateCard, setSharedBack } = useDeck()
+  const { deck, total, addCard, removeCard, setCopies, updateCard, setSharedBack, clearDeck } = useDeck()
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
   const [paperSize, setPaperSize] = useState<PaperSize>('letter')
@@ -110,6 +110,39 @@ function App() {
         URL.revokeObjectURL(step.imageSrc)
       }
     }
+    setStep({ id: 'idle' })
+  }
+
+  function handleGoHome() {
+    const hasDeck = total > 0
+    const inFlow = step.id !== 'idle'
+    if (!hasDeck && !inFlow) return
+    const msg = hasDeck
+      ? `Clear your deck${inFlow ? ' and cancel this crop' : ''}? This cannot be undone.`
+      : 'Cancel this crop and start over?'
+    if (!window.confirm(msg)) return
+
+    // Revoke blob URLs for any in-progress work not yet tracked in the deck
+    if (step.id === 'crop-front') {
+      if (step.editingPending?.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.editingPending.frontSrc)
+      if (step.imageSrc.startsWith('blob:')) URL.revokeObjectURL(step.imageSrc)
+    }
+    if (step.id === 'upload-back') {
+      if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
+      if (step.pendingCard.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.pendingCard.frontSrc)
+    }
+    if (step.id === 'crop-back') {
+      URL.revokeObjectURL(step.imageSrc)
+      if (step.pendingCard.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.pendingCard.frontSrc)
+    }
+    if (step.id === 'edit-side') {
+      // Card is in deck — clearDeck handles its stored src. Only revoke if imageSrc is a NEW file.
+      const card = deck.cards.find(c => c.id === step.cardId)
+      const storedSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
+      if (step.imageSrc !== storedSrc && step.imageSrc.startsWith('blob:')) URL.revokeObjectURL(step.imageSrc)
+    }
+
+    clearDeck()
     setStep({ id: 'idle' })
   }
 
@@ -193,7 +226,7 @@ function App() {
   if (step.id === 'crop-front') {
     return (
       <div className="app">
-        <AppHeader />
+        <AppHeader onHome={handleGoHome} />
         <main className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
@@ -210,7 +243,7 @@ function App() {
   if (step.id === 'upload-back') {
     return (
       <div className="app">
-        <AppHeader />
+        <AppHeader onHome={handleGoHome} />
         <main className="app-main">
           <div className="upload-back">
             <div className="upload-back__preview">
@@ -286,7 +319,7 @@ function App() {
   if (step.id === 'crop-back') {
     return (
       <div className="app">
-        <AppHeader />
+        <AppHeader onHome={handleGoHome} />
         <main className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
@@ -302,7 +335,7 @@ function App() {
   if (step.id === 'edit-side') {
     return (
       <div className="app">
-        <AppHeader />
+        <AppHeader onHome={handleGoHome} />
         <main className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
@@ -319,7 +352,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-header__brand">
+        <div className="app-header__brand" onClick={handleGoHome} style={{ cursor: total > 0 ? 'pointer' : undefined }}>
           <div className="app-header__title-row">
             <img src="/icon-cards.png" className="app-header__icon-left" alt="" />
             <h1>pocalab</h1>
