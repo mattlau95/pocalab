@@ -8,7 +8,7 @@
   border-radius: 12px;
   text-align: center;
   transition: border-color 0.15s, background 0.15s;
-  cursor: default;
+  cursor: pointer;
 }
 
 .upload-zone--dragging {
@@ -21,20 +21,17 @@
   margin: 0;
 }
 
-.upload-zone__btn {
-  display: inline-block;
-  padding: 8px 20px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
+.upload-zone__prompt--touch { display: none; }
+.upload-zone__prompt--drag  { display: inline; }
+
+@media (pointer: coarse) {
+  .upload-zone__prompt--touch { display: inline; }
+  .upload-zone__prompt--drag  { display: none; }
 }
 
-.upload-zone__btn:hover {
-  background: var(--primary-hover);
+.upload-zone__prompt-link {
+  color: var(--primary);
+  text-decoration: underline;
 }
 
 .upload-zone__hint {

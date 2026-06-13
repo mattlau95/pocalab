@@ -26,7 +26,7 @@ export function ImageUpload({ onFile }: Props) {
   }
 
   return (
-    <div
+    <label
       className={`upload-zone${dragging ? ' upload-zone--dragging' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
@@ -37,18 +37,18 @@ export function ImageUpload({ onFile }: Props) {
         if (file) handle(file)
       }}
     >
-      <p className="upload-zone__prompt">Drop an image here, or</p>
-      <label className="upload-zone__btn">
-        Choose file
-        <input
-          type="file"
-          accept={ACCEPTED_TYPES.join(',')}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f) }}
-          hidden
-        />
-      </label>
+      <p className="upload-zone__prompt">
+        <span className="upload-zone__prompt--touch">Tap to add an image</span>
+        <span className="upload-zone__prompt--drag">Drop an image here, or <span className="upload-zone__prompt-link">click to browse</span></span>
+      </p>
+      <input
+        type="file"
+        accept={ACCEPTED_TYPES.join(',')}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f) }}
+        hidden
+      />
       <p className="upload-zone__hint">JPEG · PNG · WebP &nbsp;·&nbsp; max 50 MB</p>
       {error && <p className="upload-zone__error">{error}</p>}
-    </div>
+    </label>
   )
 }

@@ -146,11 +146,10 @@ function App() {
     setTimeout(() => setCardAdded(false), 2000)
   }
 
-  // Use the deck-level shared back without re-uploading
-  function handleUseSharedBack() {
-    if (step.id !== 'upload-back' || !deck.sharedBack) return
+  function handleUseExistingBack(dataUrl: string) {
+    if (step.id !== 'upload-back') return
     if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
-    addCard({ ...step.pendingCard, back: deck.sharedBack })
+    addCard({ ...step.pendingCard, back: dataUrl })
     setSetAsShared(false)
     setStep({ id: 'idle' })
     setCardAdded(true)
@@ -215,23 +214,29 @@ function App() {
             <div className="upload-back__content">
               <p className="upload-back__step">Step 2 of 2 — Add the card back</p>
 
-              {deck.sharedBack && (
-                <>
-                  <div className="upload-back__shared">
-                    <div className="upload-back__shared-thumb">
-                      <img src={deck.sharedBack} alt="Shared back" />
+              {(() => {
+                const knownBacks = [...new Set(
+                  deck.cards.map(c => c.back).filter((b): b is string => b !== null)
+                )]
+                return knownBacks.length > 0 ? (
+                  <>
+                    <p className="upload-back__step" style={{ marginBottom: -4 }}>Previously used backs</p>
+                    <div className="back-gallery">
+                      {knownBacks.map((dataUrl, i) => (
+                        <button
+                          key={i}
+                          className="back-gallery__thumb"
+                          onClick={() => handleUseExistingBack(dataUrl)}
+                          title="Use this back"
+                        >
+                          <img src={dataUrl} alt={`Back option ${i + 1}`} />
+                        </button>
+                      ))}
                     </div>
-                    <div className="upload-back__shared-info">
-                      <span className="upload-back__shared-label">Use shared back</span>
-                      <span className="upload-back__shared-sub">Same design as other cards</span>
-                    </div>
-                    <button className="btn btn--primary upload-back__edit-btn" onClick={handleUseSharedBack}>
-                      Use
-                    </button>
-                  </div>
-                  <div className="upload-back__divider">or upload different</div>
-                </>
-              )}
+                    <div className="upload-back__divider">or upload different</div>
+                  </>
+                ) : null
+              })()}
 
               <ImageUpload onFile={handleBackFile} />
 

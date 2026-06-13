@@ -41,7 +41,6 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [renderedMedia, setRenderedMedia] = useState<{ width: number; height: number } | null>(null)
   const [cropSize, setCropSize] = useState(DISPLAY_CROP)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
 
   // Scale cropSize to always fit the viewport container, maintaining card aspect ratio
@@ -270,19 +269,17 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         <div className="control-group">
           <label className="control-label">Background</label>
           <div className="control-row">
-            <button
-              className="ctrl-swatch"
-              style={{ background: bgColor }}
-              onClick={() => colorInputRef.current?.click()}
-              title="Choose background color"
-            />
-            <input
-              ref={colorInputRef}
-              type="color"
-              value={bgColor}
-              onChange={(e) => setBgColor(e.target.value)}
-              style={{ display: 'none' }}
-            />
+            <div className="ctrl-swatch-wrap">
+              <div className="ctrl-swatch" style={{ background: bgColor }} />
+              <input
+                type="color"
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+                onBlur={(e) => pushHistory({ crop, zoom, rotation, bgColor: e.target.value })}
+                className="ctrl-swatch__input"
+                title="Choose background color"
+              />
+            </div>
             {hasEyeDropper && (
               <button className="ctrl-btn" onClick={handleEyeDropper} title="Sample color from image">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
