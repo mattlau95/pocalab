@@ -21,6 +21,19 @@
   letter-spacing: 0.01em;
 }
 
+.app-header__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-header__tagline {
+  font-size: 11px;
+  color: var(--foreground-muted);
+  opacity: 0.65;
+  line-height: 1;
+}
+
 .app-header__count {
   font-size: 13px;
   color: var(--foreground-muted);

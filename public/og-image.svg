@@ -21,11 +21,11 @@
   <ellipse cx="976" cy="272" rx="28" ry="28" fill="#281A46"/>
 
   <!-- Main text -->
-  <text x="80" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="92" font-weight="700" fill="#EDD9FF" letter-spacing="-2">photocard</text>
-  <text x="80" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="92" font-weight="700" fill="#FF2D78" letter-spacing="-2">generator</text>
+  <text x="80" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="120" font-weight="700" fill="#EDD9FF" letter-spacing="-3">pocalab</text>
 
   <!-- Tagline -->
-  <text x="80" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#BBA8D4">Upload · Crop · Print · 100% Free</text>
+  <text x="80" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#FF2D78" font-weight="600">a K-pop photocard maker</text>
+  <text x="80" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#BBA8D4">Upload · Crop · Print · 100% Free</text>
 
   <!-- Feature pills -->
   <rect x="80" y="438" width="196" height="40" rx="20" fill="#281A46"/>

@@ -17,7 +17,10 @@ const PRINT_SERVICE_URL = 'https://www.stickermule.com/uses/business-cards'
 function AppHeader() {
   return (
     <header className="app-header">
-      <h1>Photocard Generator</h1>
+      <div className="app-header__brand">
+        <h1>pocalab</h1>
+        <span className="app-header__tagline">a K-pop photocard maker</span>
+      </div>
       <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">
         ☕ Support
       </a>
@@ -282,7 +285,10 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Photocard Generator</h1>
+        <div className="app-header__brand">
+          <h1>pocalab</h1>
+          <span className="app-header__tagline">a K-pop photocard maker</span>
+        </div>
         {total > 0 && (
           <span className="app-header__count">{total} / {DECK_MAX_CARDS} cards</span>
         )}
