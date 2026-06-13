@@ -12,7 +12,7 @@ type Action =
   | { type: 'ADD_CARD'; card: Card }
   | { type: 'REMOVE_CARD'; id: string }
   | { type: 'SET_COPIES'; id: string; count: number }
-  | { type: 'UPDATE_CARD'; id: string; patch: Partial<Pick<Card, 'front' | 'back'>> }
+  | { type: 'UPDATE_CARD'; id: string; patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc'>> }
   | { type: 'SET_SHARED_BACK'; dataUrl: string | null }
 
 function deckReducer(deck: Deck, action: Action): Deck {
@@ -62,7 +62,12 @@ export function useDeck() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(deck))
+      // Strip session-only blob URLs before persisting — they're invalid after reload
+      const serializable = {
+        ...deck,
+        cards: deck.cards.map(({ frontSrc: _f, backSrc: _b, ...rest }) => rest),
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
     } catch { /* storage full — silently skip */ }
   }, [deck])
 
@@ -70,9 +75,14 @@ export function useDeck() {
     deck,
     total,
     addCard: (card: Card) => dispatch({ type: 'ADD_CARD', card }),
-    removeCard: (id: string) => dispatch({ type: 'REMOVE_CARD', id }),
+    removeCard: (id: string) => {
+      const card = deck.cards.find(c => c.id === id)
+      if (card?.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(card.frontSrc)
+      if (card?.backSrc?.startsWith('blob:')) URL.revokeObjectURL(card.backSrc)
+      dispatch({ type: 'REMOVE_CARD', id })
+    },
     setCopies: (id: string, count: number) => dispatch({ type: 'SET_COPIES', id, count }),
-    updateCard: (id: string, patch: Partial<Pick<Card, 'front' | 'back'>>) =>
+    updateCard: (id: string, patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc'>>) =>
       dispatch({ type: 'UPDATE_CARD', id, patch }),
     setSharedBack: (dataUrl: string | null) => dispatch({ type: 'SET_SHARED_BACK', dataUrl }),
   }

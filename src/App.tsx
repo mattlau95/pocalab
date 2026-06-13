@@ -92,6 +92,7 @@ function App() {
     if (step.id === 'upload-back') {
       if (!window.confirm('Discard this card? Your cropped front image will be lost.')) return
       if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
+      if (step.pendingCard.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.pendingCard.frontSrc)
       setSetAsShared(false)
       setStep({ id: 'idle' })
       return
@@ -102,7 +103,12 @@ function App() {
       return
     }
     if (step.id === 'edit-side') {
-      URL.revokeObjectURL(step.imageSrc)
+      // Only revoke if this is a NEW file (not the card's stored src which we want to keep)
+      const card = deck.cards.find(c => c.id === step.cardId)
+      const storedSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
+      if (step.imageSrc !== storedSrc && step.imageSrc.startsWith('blob:')) {
+        URL.revokeObjectURL(step.imageSrc)
+      }
     }
     setStep({ id: 'idle' })
   }
@@ -114,13 +120,14 @@ function App() {
 
   function handleFrontConfirm(dataUrl: string) {
     if (step.id !== 'crop-front') return
-    if (!step.imageSrc.startsWith('data:')) URL.revokeObjectURL(step.imageSrc)
     if (step.editingPending) {
+      // Re-editing front from upload-back step — imageSrc is a data URL, preserve existing frontSrc
       setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl } })
     } else {
+      // New upload — keep the blob URL alive as frontSrc for future re-editing
       const card = createCard()
       card.front = dataUrl
-      setStep({ id: 'upload-back', pendingCard: card })
+      setStep({ id: 'upload-back', pendingCard: { ...card, frontSrc: step.imageSrc } })
     }
   }
 
@@ -136,8 +143,8 @@ function App() {
 
   function handleBackConfirm(dataUrl: string) {
     if (step.id !== 'crop-back') return
-    URL.revokeObjectURL(step.imageSrc)
-    const card = { ...step.pendingCard, back: dataUrl }
+    // Keep blob URL alive as backSrc for future re-editing
+    const card = { ...step.pendingCard, back: dataUrl, backSrc: step.imageSrc }
     addCard(card)
     if (step.setAsShared) setSharedBack(dataUrl)
     setSetAsShared(false)
@@ -161,10 +168,25 @@ function App() {
     setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId, side })
   }
 
+  function handleReEditSide(cardId: string, side: 'front' | 'back') {
+    const card = deck.cards.find(c => c.id === cardId)
+    if (!card) return
+    const src = side === 'front' ? card.frontSrc : card.backSrc
+    if (!src) return
+    setStep({ id: 'edit-side', imageSrc: src, cardId, side })
+  }
+
   function handleEditConfirm(dataUrl: string) {
     if (step.id !== 'edit-side') return
-    URL.revokeObjectURL(step.imageSrc)
-    updateCard(step.cardId, { [step.side]: dataUrl })
+    // Revoke the old stored src if we're replacing it with a different blob
+    const card = deck.cards.find(c => c.id === step.cardId)
+    const oldSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
+    if (oldSrc && oldSrc !== step.imageSrc && oldSrc.startsWith('blob:')) {
+      URL.revokeObjectURL(oldSrc)
+    }
+    // Keep new imageSrc alive as the updated stored src
+    const srcKey = step.side === 'front' ? 'frontSrc' : 'backSrc'
+    updateCard(step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc })
     setStep({ id: 'idle' })
   }
 
@@ -320,6 +342,7 @@ function App() {
                 onCopiesChange={(count) => setCopies(card.id, count)}
                 onRemove={() => removeCard(card.id)}
                 onEditSide={(side, file) => handleEditFile(card.id, side, file)}
+                onReEditSide={(side) => handleReEditSide(card.id, side)}
               />
             ))}
           </div>
