@@ -370,8 +370,8 @@
     bottom: 0;
     left: 0;
     right: 0;
-    align-items: center;
-    gap: 8px;
+    align-items: stretch;
+    gap: 10px;
     padding: 10px 16px;
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
     background: var(--background);
@@ -380,15 +380,30 @@
   }
 
   .deck-bar__add {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: 8px;
+    font-size: 17px;
+    font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 13px;
+    border: none;
+    padding: 0;
+    min-height: 56px;
   }
 
-  .deck-bar__download {
-    margin-left: auto;
+  .deck-bar__right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     flex-shrink: 0;
+  }
+
+  .deck-bar__right .btn--primary {
+    width: 100%;
   }
 
   /* Hide desktop equivalents when deck-bar is visible */
@@ -402,6 +417,6 @@
 
   /* Pad content above the fixed bar */
   .app-main--with-bar {
-    padding-bottom: 72px;
+    padding-bottom: 100px;
   }
 }

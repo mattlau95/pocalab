@@ -169,6 +169,39 @@ The `X / 9 cards` badge in the idle view header was left-aligned after the brand
 
 ---
 
+## 2026-06-13 — Back gallery, mobile fixes, sticky action bar (MAT-308, MAT-313–317)
+
+### MAT-313 — Back gallery on upload-back step
+
+The "Step 2 of 2" screen now shows all previously cropped backs from the current deck as a row of thumbnails. Tapping any thumbnail immediately adds the new card with that back and returns to idle — no re-upload, no re-crop. Previously only the single `sharedBack` was surfaced; this extends the concept to every distinct back already in the deck, derived by deduplicating `deck.cards.map(c => c.back)`. The "or upload different" divider separates the gallery from the upload zone when both are present.
+
+### MAT-314 — Mobile color picker (overlay input)
+
+The crop editor's background color swatch previously called `colorInputRef.current?.click()` to open a hidden `<input type="color">` — a pattern iOS Safari blocks with no error or fallback. Fixed by overlaying a fully transparent `<input type="color">` directly on top of the visible swatch div (`position: absolute; inset: 0; opacity: 0`). The user's touch hits the input element directly; no programmatic click needed. `onBlur` on the input also pushes a history snapshot, so color changes are now undoable.
+
+### MAT-315 — Mobile upload UX
+
+`ImageUpload` was a `<div>` with a nested `<label>` button — only the button was tappable. Converted the outer container to a `<label>` wrapping a hidden `<input type="file">`, so tapping anywhere on the zone opens the picker. Two copy variants in the prompt: "Tap to add an image" on touch devices, "Drop an image here, or click to browse" on pointer devices. Switched with `@media (pointer: coarse)`.
+
+### MAT-316 — Fill button broken after rotation
+
+`fillToBleed()` computed the fill zoom using `renderedMedia.width` and `renderedMedia.height` — the zoom=1 display size of the image as reported by react-easy-crop on load, before any rotation is applied. When the image is rotated 90° or 270°, the effective bounding box dimensions swap: a portrait image becomes landscape. The calculation was using the wrong axis, producing a zoom that overshot one dimension and left the other empty. Fixed by swapping `renderedMedia.width` and `renderedMedia.height` when `rotation % 180 !== 0`.
+
+### MAT-317 — Mobile sticky action bar
+
+On mobile with cards in the deck, the paper size toggle and download button required scrolling past the card grid to reach, and the upload zone was further below still. Replaced with a fixed action bar at the bottom of the screen:
+
+- Left side: a large "**+ Add image**" button styled as a primary-colored tap target, stretching the full height of the bar.
+- Right side: paper size toggle (US Letter / A4) stacked above the Download PDF button in a column.
+
+The desktop layout is unchanged — `.deck-actions--desktop` stays visible on non-touch devices; `.deck-upload` also stays. On `pointer: coarse`, both are hidden and the deck-bar takes over. The header was made `position: sticky; top: 0` so it remains visible while scrolling the card grid.
+
+### MAT-308 — Canonical URL updates
+
+With `pocalab.app` confirmed live, the placeholder URLs were updated: `sitemap.xml` `<loc>`, `robots.txt` `Sitemap:`, and a new `<meta property="og:url" content="https://pocalab.app/">` in `index.html`. All three previously pointed to `photocard-generator.vercel.app`.
+
+---
+
 ## 2026-06-10 — Crop editor: seven UX improvements (MAT-218–224)
 
 Seven features across the crop editor and the add-card flow.

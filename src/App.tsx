@@ -351,8 +351,8 @@ function App() {
         {deck.cards.length > 0 && (
           <div className="deck-bar">
             {total < DECK_MAX_CARDS && (
-              <label className="deck-bar__add btn btn--ghost">
-                + Add
+              <label className="deck-bar__add">
+                + Add image
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -361,23 +361,25 @@ function App() {
                 />
               </label>
             )}
-            <div className="paper-size-toggle">
-              <button
-                className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('letter')}
-              >
-                US Letter
-              </button>
-              <button
-                className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('a4')}
-              >
-                A4
+            <div className="deck-bar__right">
+              <div className="paper-size-toggle">
+                <button
+                  className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
+                  onClick={() => setPaperSize('letter')}
+                >
+                  US Letter
+                </button>
+                <button
+                  className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
+                  onClick={() => setPaperSize('a4')}
+                >
+                  A4
+                </button>
+              </div>
+              <button className="btn btn--primary" onClick={handleExport} disabled={exporting}>
+                {exporting ? 'Generating…' : 'Download PDF'}
               </button>
             </div>
-            <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
-              {exporting ? 'Generating…' : 'Download PDF'}
-            </button>
           </div>
         )}
 
