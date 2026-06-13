@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://photocard-generator.vercel.app/sitemap.xml
+Sitemap: https://pocalab.app/sitemap.xml
