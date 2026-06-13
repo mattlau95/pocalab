@@ -10,7 +10,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background);
 }
 
 .app-header h1 {
@@ -353,4 +356,52 @@
   border-radius: 999px;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* Mobile sticky action bar — hidden on desktop */
+.deck-bar {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .deck-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    background: var(--background);
+    border-top: 1px solid var(--border);
+    z-index: 10;
+  }
+
+  .deck-bar__add {
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  .deck-bar__download {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* Hide desktop equivalents when deck-bar is visible */
+  .deck-actions--desktop {
+    display: none;
+  }
+
+  .deck-upload {
+    display: none;
+  }
+
+  /* Pad content above the fixed bar */
+  .app-main--with-bar {
+    padding-bottom: 72px;
+  }
 }

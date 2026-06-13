@@ -155,8 +155,11 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
   function fillToBleed() {
     if (!renderedMedia) return
+    const transposed = rotation % 180 !== 0
+    const rw = transposed ? renderedMedia.height : renderedMedia.width
+    const rh = transposed ? renderedMedia.width : renderedMedia.height
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
-      Math.max(cropSize.width / renderedMedia.width, cropSize.height / renderedMedia.height)
+      Math.max(cropSize.width / rw, cropSize.height / rh)
     ))
     const c = { x: 0, y: 0 }
     setZoom(newZoom)

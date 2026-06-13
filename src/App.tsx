@@ -308,7 +308,7 @@ function App() {
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
 
-      <main className="app-main">
+      <main className={`app-main${deck.cards.length > 0 ? ' app-main--with-bar' : ''}`}>
         {deck.cards.length > 0 && (
           <div className="deck-grid">
             {deck.cards.map((card) => (
@@ -326,7 +326,7 @@ function App() {
         )}
 
         {deck.cards.length > 0 && (
-          <div className="deck-actions">
+          <div className="deck-actions deck-actions--desktop">
             <div className="paper-size-toggle">
               <button
                 className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
@@ -348,6 +348,39 @@ function App() {
           </div>
         )}
 
+        {deck.cards.length > 0 && (
+          <div className="deck-bar">
+            {total < DECK_MAX_CARDS && (
+              <label className="deck-bar__add btn btn--ghost">
+                + Add
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
+                  hidden
+                />
+              </label>
+            )}
+            <div className="paper-size-toggle">
+              <button
+                className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
+                onClick={() => setPaperSize('letter')}
+              >
+                US Letter
+              </button>
+              <button
+                className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
+                onClick={() => setPaperSize('a4')}
+              >
+                A4
+              </button>
+            </div>
+            <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Generating…' : 'Download PDF'}
+            </button>
+          </div>
+        )}
+
         {showPrintTip && (
           <div className="print-tip">
             <span>Want professional prints? Try</span>
@@ -359,7 +392,9 @@ function App() {
         )}
 
         {total < DECK_MAX_CARDS && (
-          <ImageUpload onFile={handleFrontFile} />
+          <div className={deck.cards.length > 0 ? 'deck-upload' : undefined}>
+            <ImageUpload onFile={handleFrontFile} />
+          </div>
         )}
 
         {total >= DECK_MAX_CARDS && (
