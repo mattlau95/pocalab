@@ -36,24 +36,31 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
+  // Rendered media dimensions from react-easy-crop (zoom=1 display size, not natural pixels)
+  const [renderedMedia, setRenderedMedia] = useState<{ width: number; height: number } | null>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
 
+  // Detect natural image size; reset rendered media so stale dims don't trigger auto-fill
   useEffect(() => {
+    setRenderedMedia(null)
     const img = new Image()
-    img.onload = () => {
-      const { naturalWidth: w, naturalHeight: h } = img
-      setImgSize({ w, h })
-      // MAT-290: auto-fill if image exactly matches the bleed export dimensions
-      if (w === CARD_BLEED.widthPx && h === CARD_BLEED.heightPx) {
-        const fitScale = Math.min(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
-        const fillScale = Math.max(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
-        setZoom(Math.min(MAX_ZOOM, fillScale / fitScale))
-        setCrop({ x: 0, y: 0 })
-      }
-    }
+    img.onload = () => setImgSize({ w: img.naturalWidth, h: img.naturalHeight })
     img.src = imageSrc
   }, [imageSrc])
+
+  // MAT-290: auto-fill when a bleed-size export is re-uploaded
+  // Fires after both imgSize and renderedMedia are available
+  useEffect(() => {
+    if (!imgSize || !renderedMedia) return
+    if (imgSize.w === CARD_BLEED.widthPx && imgSize.h === CARD_BLEED.heightPx) {
+      const fillZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
+        Math.max(DISPLAY_CROP.width / renderedMedia.width, DISPLAY_CROP.height / renderedMedia.height)
+      ))
+      setZoom(fillZoom)
+      setCrop({ x: 0, y: 0 })
+    }
+  }, [imgSize, renderedMedia])
 
   // Undo / redo — stored in refs so handlers always see current values
   const historyRef = useRef<Snapshot[]>([{ crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }])
@@ -89,7 +96,8 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels)
-    setIsLowRes(pixels.width < CARD_BLEED.widthPx || pixels.height < CARD_BLEED.heightPx)
+    // 2px tolerance absorbs floating-point rounding in fill-zoom calculations
+    setIsLowRes(pixels.width < CARD_BLEED.widthPx - 2 || pixels.height < CARD_BLEED.heightPx - 2)
   }, [])
 
   const handleConfirm = async () => {
@@ -125,11 +133,10 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   }
 
   function fillToBleed() {
-    if (!imgSize) return
-    const { w, h } = imgSize
-    const fitScale = Math.min(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
-    const fillScale = Math.max(DISPLAY_CROP.width / w, DISPLAY_CROP.height / h)
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fillScale / fitScale))
+    if (!renderedMedia) return
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
+      Math.max(DISPLAY_CROP.width / renderedMedia.width, DISPLAY_CROP.height / renderedMedia.height)
+    ))
     const c = { x: 0, y: 0 }
     setZoom(newZoom)
     setCrop(c)
@@ -174,6 +181,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
           onZoomChange={setZoom}
           onRotationChange={setRotation}
           onCropComplete={onCropComplete}
+          onMediaLoaded={(ms) => setRenderedMedia({ width: ms.width, height: ms.height })}
           showGrid={false}
         />
 
@@ -266,7 +274,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
 
         <div className="ctrl-pills">
           <button className="ctrl-pill" onClick={center} title="Center image in frame">Center</button>
-          <button className="ctrl-pill" onClick={fillToBleed} disabled={!imgSize} title="Fill bleed frame with no white space">Fill</button>
+          <button className="ctrl-pill" onClick={fillToBleed} disabled={!renderedMedia} title="Fill bleed frame with no white space">Fill</button>
           <button className="ctrl-pill" onClick={undo} disabled={!canUndo} title="Undo">Undo</button>
           <button className="ctrl-pill" onClick={redo} disabled={!canRedo} title="Redo">Redo</button>
           <button

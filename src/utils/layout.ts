@@ -39,44 +39,40 @@ export function computeBackSlots(): [number, number][] {
 
 export function drawCropMarks(page: PDFPage): void {
   const black = rgb(0, 0, 0)
-  const gray = rgb(0.5, 0.5, 0.5)
+  const trimGray = rgb(0.55, 0.55, 0.55)
 
-  const solid = (x1: number, y1: number, x2: number, y2: number) =>
+  const cornerMark = (x1: number, y1: number, x2: number, y2: number) =>
     page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 0.5, color: black })
 
-  const dashed = (x1: number, y1: number, x2: number, y2: number) =>
-    page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 0.25, color: gray, dashArray: [4, 4] })
+  const trimLine = (x1: number, y1: number, x2: number, y2: number) =>
+    page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 0.25, color: trimGray })
 
   const trimL = MARGIN_X + TRIM_INSET
   const trimR = MARGIN_X + 3 * BLEED_W - TRIM_INSET
   const trimB = MARGIN_Y + TRIM_INSET
   const trimT = MARGIN_Y + 3 * BLEED_H - TRIM_INSET
 
-  // Corner marks (L-shaped, solid black)
-  solid(trimL - MARK_LEN, trimB, trimL, trimB); solid(trimL, trimB - MARK_LEN, trimL, trimB)   // bottom-left
-  solid(trimR, trimB, trimR + MARK_LEN, trimB); solid(trimR, trimB - MARK_LEN, trimR, trimB)   // bottom-right
-  solid(trimL - MARK_LEN, trimT, trimL, trimT); solid(trimL, trimT, trimL, trimT + MARK_LEN)   // top-left
-  solid(trimR, trimT, trimR + MARK_LEN, trimT); solid(trimR, trimT, trimR, trimT + MARK_LEN)   // top-right
+  // Corner marks (L-shaped, solid black) at outer trim corners
+  cornerMark(trimL - MARK_LEN, trimB, trimL, trimB); cornerMark(trimL, trimB - MARK_LEN, trimL, trimB)   // bottom-left
+  cornerMark(trimR, trimB, trimR + MARK_LEN, trimB); cornerMark(trimR, trimB - MARK_LEN, trimR, trimB)   // bottom-right
+  cornerMark(trimL - MARK_LEN, trimT, trimL, trimT); cornerMark(trimL, trimT, trimL, trimT + MARK_LEN)   // top-left
+  cornerMark(trimR, trimT, trimR + MARK_LEN, trimT); cornerMark(trimR, trimT, trimR, trimT + MARK_LEN)   // top-right
 
-  // Interior column cut guides — full-height dashed line + dual trim-edge ticks
+  // Outer trim lines — solid gray, full page span
+  trimLine(trimL, 0, trimL, LETTER_H)                 // left outer trim
+  trimLine(trimR, 0, trimR, LETTER_H)                 // right outer trim
+  trimLine(0, trimB, LETTER_W, trimB)                 // bottom outer trim
+  trimLine(0, trimT, LETTER_W, trimT)                 // top outer trim
+
+  // Interior column trim pairs — one solid gray line per trim edge, full page height
   for (const xMid of [MARGIN_X + BLEED_W, MARGIN_X + 2 * BLEED_W]) {
-    dashed(xMid, 0, xMid, LETTER_H)
-    // Trim-edge ticks on top margin (both sides of the bleed boundary)
-    solid(xMid - TRIM_INSET, trimT, xMid - TRIM_INSET, trimT + MARK_LEN)
-    solid(xMid + TRIM_INSET, trimT, xMid + TRIM_INSET, trimT + MARK_LEN)
-    // Trim-edge ticks on bottom margin
-    solid(xMid - TRIM_INSET, trimB - MARK_LEN, xMid - TRIM_INSET, trimB)
-    solid(xMid + TRIM_INSET, trimB - MARK_LEN, xMid + TRIM_INSET, trimB)
+    trimLine(xMid - TRIM_INSET, 0, xMid - TRIM_INSET, LETTER_H)   // right card of left pair
+    trimLine(xMid + TRIM_INSET, 0, xMid + TRIM_INSET, LETTER_H)   // left card of right pair
   }
 
-  // Interior row cut guides — full-width dashed line + dual trim-edge ticks
+  // Interior row trim pairs — one solid gray line per trim edge, full page width
   for (const yMid of [MARGIN_Y + BLEED_H, MARGIN_Y + 2 * BLEED_H]) {
-    dashed(0, yMid, LETTER_W, yMid)
-    // Trim-edge ticks on left margin
-    solid(trimL - MARK_LEN, yMid - TRIM_INSET, trimL, yMid - TRIM_INSET)
-    solid(trimL - MARK_LEN, yMid + TRIM_INSET, trimL, yMid + TRIM_INSET)
-    // Trim-edge ticks on right margin
-    solid(trimR, yMid - TRIM_INSET, trimR + MARK_LEN, yMid - TRIM_INSET)
-    solid(trimR, yMid + TRIM_INSET, trimR + MARK_LEN, yMid + TRIM_INSET)
+    trimLine(0, yMid - TRIM_INSET, LETTER_W, yMid - TRIM_INSET)   // top card of lower pair
+    trimLine(0, yMid + TRIM_INSET, LETTER_W, yMid + TRIM_INSET)   // bottom card of upper pair
   }
 }

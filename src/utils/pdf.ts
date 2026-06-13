@@ -60,10 +60,19 @@ export async function createPhotocardPdf(slots: PdfSlot[]): Promise<Uint8Array> 
 
   // Orientation labels
   const gridTop = MARGIN_Y + 3 * BLEED_H
-  const topLabel = 'TOP ↑'
+  const topLabel = 'TOP ^'
   const topLabelW = helvetica.widthOfTextAtSize(topLabel, 7)
+  const sideLabel = 'TOP >'
+  const sideLabelW = helvetica.widthOfTextAtSize(sideLabel, 7)
+
+  const leftMarginX = MARGIN_X - mmToPt(3)
+  const rightMarginX = MARGIN_X + 3 * BLEED_W + mmToPt(4)
+  // Place side labels so their top edge sits 3mm below the top trim line.
+  // Top trim line is at gridTop - mmToPt(2); text top = anchor y + topLabelW (rotated 90°).
+  const sideTopY = gridTop - mmToPt(2) - mmToPt(3) - sideLabelW
 
   for (const page of [frontPage, backPage]) {
+    // Centered above grid
     page.drawText(topLabel, {
       x: (LETTER_W - topLabelW) / 2,
       y: gridTop + mmToPt(2),
@@ -71,10 +80,30 @@ export async function createPhotocardPdf(slots: PdfSlot[]): Promise<Uint8Array> 
       font: helvetica,
       color: gray,
     })
+
+    // Left margin, rotated 90° CCW — backup if top edge is cut off by printer
+    page.drawText(sideLabel, {
+      x: leftMarginX,
+      y: sideTopY,
+      size: 7,
+      font: helvetica,
+      color: gray,
+      rotate: degrees(90),
+    })
+
+    // Right margin, rotated 90° CCW — backup if top edge is cut off by printer
+    page.drawText(sideLabel, {
+      x: rightMarginX,
+      y: sideTopY,
+      size: 7,
+      font: helvetica,
+      color: gray,
+      rotate: degrees(90),
+    })
   }
 
   // "flip long edge →" on right margin of front page, reading bottom-to-top
-  frontPage.drawText('flip long edge →', {
+  frontPage.drawText('flip long edge ->', {
     x: MARGIN_X + 3 * BLEED_W + mmToPt(4),
     y: LETTER_H / 2,
     size: 7,
