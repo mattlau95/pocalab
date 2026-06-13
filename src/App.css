@@ -19,12 +19,27 @@
   font-family: 'Fredoka', system-ui, sans-serif;
   text-transform: lowercase;
   letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 .app-header__brand {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+}
+
+.app-header__title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-header__icon-left,
+.app-header__icon-right {
+  height: 14px;
+  width: auto;
+  display: block;
 }
 
 .app-header__tagline {

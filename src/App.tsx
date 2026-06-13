@@ -18,7 +18,11 @@ function AppHeader() {
   return (
     <header className="app-header">
       <div className="app-header__brand">
-        <h1>pocalab</h1>
+        <div className="app-header__title-row">
+          <img src="/icon-cards.png" className="app-header__icon-left" alt="" />
+          <h1>pocalab</h1>
+          <img src="/icon-dashes.png" className="app-header__icon-right" alt="" />
+        </div>
         <span className="app-header__tagline">a K-pop photocard maker</span>
       </div>
       <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">
@@ -286,7 +290,11 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-header__brand">
-          <h1>pocalab</h1>
+          <div className="app-header__title-row">
+            <img src="/icon-cards.png" className="app-header__icon-left" alt="" />
+            <h1>pocalab</h1>
+            <img src="/icon-dashes.png" className="app-header__icon-right" alt="" />
+          </div>
           <span className="app-header__tagline">a K-pop photocard maker</span>
         </div>
         {total > 0 && (

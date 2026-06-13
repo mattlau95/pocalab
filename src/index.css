@@ -5,10 +5,10 @@
   --foreground-muted: #4A3728;
   --surface: #F5E8D8;
   --border: #F0DCCA;
-  --primary: #FF5C87;
-  --primary-hover: #E0446F;
+  --primary: #EE4897;
+  --primary-hover: #D0307F;
   --primary-foreground: #fff;
-  --primary-muted: rgba(255, 92, 135, 0.08);
+  --primary-muted: rgba(238, 72, 151, 0.08);
   --destructive: #ef4444;
   --destructive-muted: rgba(239, 68, 68, 0.08);
   --destructive-border: rgba(239, 68, 68, 0.35);
@@ -31,10 +31,10 @@
     --foreground-muted: #BBA8D4;
     --surface: #160D30;
     --border: #281A46;
-    --primary: #FF2D78;
-    --primary-hover: #E01565;
+    --primary: #EE4897;
+    --primary-hover: #D0307F;
     --primary-foreground: #fff;
-    --primary-muted: rgba(255, 45, 120, 0.12);
+    --primary-muted: rgba(238, 72, 151, 0.12);
   }
 }
 

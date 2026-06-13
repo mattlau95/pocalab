@@ -11,6 +11,7 @@ declare global {
 }
 
 const DISPLAY_CROP = { width: 295, height: 445 }
+const CARD_ASPECT = CARD_BLEED.widthMm / CARD_BLEED.heightMm
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
 const DEFAULT_BG = '#ffffff'

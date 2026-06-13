@@ -9,13 +9,13 @@
   <rect width="1200" height="630" fill="url(#dots)"/>
 
   <!-- Left accent bar -->
-  <rect x="0" y="0" width="8" height="630" fill="#FF2D78"/>
+  <rect x="0" y="0" width="8" height="630" fill="#EE4897"/>
 
   <!-- Photocard stack (right side) -->
   <rect x="880" y="120" width="192" height="296" rx="12" fill="#160D30" stroke="#281A46" stroke-width="1.5" transform="rotate(-8, 976, 268)"/>
   <rect x="880" y="135" width="192" height="296" rx="12" fill="#1A0F38" stroke="#281A46" stroke-width="1.5" transform="rotate(-4, 976, 283)"/>
-  <rect x="880" y="150" width="192" height="296" rx="12" fill="#200C3A" stroke="#FF2D78" stroke-width="1.5"/>
-  <rect x="880" y="150" width="192" height="8" rx="4" fill="#FF2D78" opacity="0.9"/>
+  <rect x="880" y="150" width="192" height="296" rx="12" fill="#200C3A" stroke="#EE4897" stroke-width="1.5"/>
+  <rect x="880" y="150" width="192" height="8" rx="4" fill="#EE4897" opacity="0.9"/>
   <rect x="880" y="192" width="192" height="192" fill="#281A46" opacity="0.5"/>
   <ellipse cx="976" cy="288" rx="48" ry="48" fill="#160D30"/>
   <ellipse cx="976" cy="272" rx="28" ry="28" fill="#281A46"/>
@@ -24,7 +24,7 @@
   <text x="80" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="120" font-weight="700" fill="#EDD9FF" letter-spacing="-3">pocalab</text>
 
   <!-- Tagline -->
-  <text x="80" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#FF2D78" font-weight="600">a K-pop photocard maker</text>
+  <text x="80" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#EE4897" font-weight="600">a K-pop photocard maker</text>
   <text x="80" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#BBA8D4">Upload · Crop · Print · 100% Free</text>
 
   <!-- Feature pills -->
