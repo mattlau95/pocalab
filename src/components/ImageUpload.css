@@ -12,20 +12,20 @@
 }
 
 .upload-zone--dragging {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--primary);
+  background: var(--primary-muted);
 }
 
 .upload-zone__prompt {
-  color: var(--text);
+  color: var(--foreground-muted);
   margin: 0;
 }
 
 .upload-zone__btn {
   display: inline-block;
   padding: 8px 20px;
-  background: #4f46e5;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -34,18 +34,18 @@
 }
 
 .upload-zone__btn:hover {
-  background: #4338ca;
+  background: var(--primary-hover);
 }
 
 .upload-zone__hint {
   font-size: 13px;
-  color: var(--text);
+  color: var(--foreground-muted);
   opacity: 0.6;
   margin: 0;
 }
 
 .upload-zone__error {
-  color: #ef4444;
+  color: var(--destructive);
   font-size: 13px;
   margin: 0;
 }

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0C0818"/>
+
+  <!-- Subtle grid dots -->
+  <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="20" cy="20" r="1.5" fill="#281A46"/>
+  </pattern>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="8" height="630" fill="#FF2D78"/>
+
+  <!-- Photocard stack (right side) -->
+  <rect x="880" y="120" width="192" height="296" rx="12" fill="#160D30" stroke="#281A46" stroke-width="1.5" transform="rotate(-8, 976, 268)"/>
+  <rect x="880" y="135" width="192" height="296" rx="12" fill="#1A0F38" stroke="#281A46" stroke-width="1.5" transform="rotate(-4, 976, 283)"/>
+  <rect x="880" y="150" width="192" height="296" rx="12" fill="#200C3A" stroke="#FF2D78" stroke-width="1.5"/>
+  <rect x="880" y="150" width="192" height="8" rx="4" fill="#FF2D78" opacity="0.9"/>
+  <rect x="880" y="192" width="192" height="192" fill="#281A46" opacity="0.5"/>
+  <ellipse cx="976" cy="288" rx="48" ry="48" fill="#160D30"/>
+  <ellipse cx="976" cy="272" rx="28" ry="28" fill="#281A46"/>
+
+  <!-- Main text -->
+  <text x="80" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="92" font-weight="700" fill="#EDD9FF" letter-spacing="-2">photocard</text>
+  <text x="80" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="92" font-weight="700" fill="#FF2D78" letter-spacing="-2">generator</text>
+
+  <!-- Tagline -->
+  <text x="80" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#BBA8D4">Upload · Crop · Print · 100% Free</text>
+
+  <!-- Feature pills -->
+  <rect x="80" y="438" width="196" height="40" rx="20" fill="#281A46"/>
+  <text x="178" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="17" fill="#BBA8D4" text-anchor="middle">55×85 mm trim</text>
+
+  <rect x="292" y="438" width="160" height="40" rx="20" fill="#281A46"/>
+  <text x="372" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="17" fill="#BBA8D4" text-anchor="middle">PDF export</text>
+
+  <rect x="468" y="438" width="170" height="40" rx="20" fill="#281A46"/>
+  <text x="553" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="17" fill="#BBA8D4" text-anchor="middle">US Letter + A4</text>
+
+  <!-- URL hint -->
+  <text x="80" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#BBA8D4" opacity="0.45">photocard-generator.vercel.app</text>
+</svg>
