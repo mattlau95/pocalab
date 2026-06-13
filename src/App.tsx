@@ -303,7 +303,7 @@ function App() {
           <span className="app-header__tagline">a K-pop photocard maker</span>
         </div>
         {total > 0 && (
-          <span className="app-header__count">{total} / {DECK_MAX_CARDS} cards</span>
+          <span className="app-header__count" aria-live="polite" aria-atomic="true">{total} / {DECK_MAX_CARDS} cards</span>
         )}
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
@@ -379,6 +379,7 @@ function App() {
               <button className="btn btn--primary" onClick={handleExport} disabled={exporting}>
                 {exporting ? 'Generating…' : 'Download PDF'}
               </button>
+              {exportError && <p className="deck-bar__error">{exportError}</p>}
             </div>
           </div>
         )}
@@ -404,7 +405,7 @@ function App() {
         )}
       </main>
 
-      {cardAdded && <div className="toast">Card added to deck</div>}
+      {cardAdded && <div className="toast" role="status" aria-live="polite">Card added to deck</div>}
     </div>
   )
 }

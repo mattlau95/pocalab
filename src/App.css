@@ -49,7 +49,6 @@
 .app-header__tagline {
   font-size: 11px;
   color: var(--foreground-muted);
-  opacity: 0.65;
   line-height: 1;
 }
 
@@ -59,7 +58,6 @@
   transform: translateX(-50%);
   font-size: 13px;
   color: var(--foreground-muted);
-  opacity: 0.7;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -79,7 +77,6 @@
 .deck-full {
   font-size: 14px;
   color: var(--foreground-muted);
-  opacity: 0.7;
   margin-top: 8px;
 }
 
@@ -131,7 +128,6 @@
 .upload-back__front-label {
   font-size: 12px;
   color: var(--foreground-muted);
-  opacity: 0.7;
 }
 
 .upload-back__edit-btn {
@@ -174,7 +170,6 @@
   gap: 8px;
   font-size: 12px;
   color: var(--foreground-muted);
-  opacity: 0.6;
 }
 
 .upload-back__divider::before,
@@ -336,11 +331,6 @@
   font-size: 18px;
   line-height: 1;
   padding: 0 2px;
-  opacity: 0.6;
-}
-
-.print-tip__dismiss:hover {
-  opacity: 1;
 }
 
 .toast {
@@ -419,4 +409,11 @@
   .app-main--with-bar {
     padding-bottom: 100px;
   }
+}
+
+.deck-bar__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--destructive);
+  text-align: center;
 }

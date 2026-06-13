@@ -8,6 +8,18 @@
   gap: 10px;
   width: clamp(140px, 45vw, 164px);
   flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.deck-card--removing {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-card {
+    transition: none;
+  }
 }
 
 .deck-card__remove {
@@ -67,7 +79,6 @@
 .deck-card__side-label {
   font-size: 11px;
   color: var(--foreground-muted);
-  opacity: 0.7;
 }
 
 .deck-card__side-actions {
@@ -77,8 +88,8 @@
 }
 
 .deck-card__dl {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 4px;
   border: 1px solid var(--border);
   background: transparent;
@@ -97,7 +108,7 @@
 
 .deck-card__edit {
   font-size: 11px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid var(--border);
   background: transparent;
@@ -151,4 +162,66 @@
   min-width: 20px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+@media (pointer: coarse) {
+  .deck-card__dl {
+    width: 32px;
+    height: 32px;
+  }
+
+  .deck-card__edit {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .copies-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+.deck-card__remove-confirm {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.deck-card__remove-yes,
+.deck-card__remove-no {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid;
+  transition: background 0.1s;
+}
+
+.deck-card__remove-yes {
+  background: var(--destructive);
+  border-color: var(--destructive);
+  color: #fff;
+}
+
+.deck-card__remove-no {
+  background: var(--background);
+  border-color: var(--border);
+  color: var(--foreground-muted);
+}
+
+@media (pointer: coarse) {
+  .deck-card__remove-yes,
+  .deck-card__remove-no {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
 }

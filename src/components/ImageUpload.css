@@ -37,7 +37,6 @@
 .upload-zone__hint {
   font-size: 13px;
   color: var(--foreground-muted);
-  opacity: 0.6;
   margin: 0;
 }
 

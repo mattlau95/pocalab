@@ -15,6 +15,7 @@ const CARD_ASPECT = CARD_BLEED.widthMm / CARD_BLEED.heightMm
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
 const DEFAULT_BG = '#ffffff'
+const PAN_STEP = 8
 
 interface Area { x: number; y: number; width: number; height: number }
 interface Snapshot { crop: { x: number; y: number }; zoom: number; rotation: number; bgColor: string }
@@ -41,6 +42,9 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [renderedMedia, setRenderedMedia] = useState<{ width: number; height: number } | null>(null)
   const [cropSize, setCropSize] = useState(DISPLAY_CROP)
   const viewportRef = useRef<HTMLDivElement>(null)
+  const cropRef = useRef(crop)
+  cropRef.current = crop
+  const [isViewportFocused, setIsViewportFocused] = useState(false)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
 
   // Scale cropSize to always fit the viewport container, maintaining card aspect ratio
@@ -189,7 +193,27 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
     <div className="crop-editor">
       {label && <p className="crop-editor__label">{label}</p>}
 
-      <div className="crop-viewport" style={{ background: bgColor }} ref={viewportRef}>
+      <div
+        className="crop-viewport"
+        style={{ background: bgColor }}
+        ref={viewportRef}
+        tabIndex={0}
+        aria-label="Crop viewport — use arrow keys to pan the image"
+        onFocus={() => setIsViewportFocused(true)}
+        onBlur={() => setIsViewportFocused(false)}
+        onKeyDown={(e) => {
+          if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+          e.preventDefault()
+          setCrop(c => ({
+            x: e.key === 'ArrowLeft' ? c.x - PAN_STEP : e.key === 'ArrowRight' ? c.x + PAN_STEP : c.x,
+            y: e.key === 'ArrowUp' ? c.y - PAN_STEP : e.key === 'ArrowDown' ? c.y + PAN_STEP : c.y,
+          }))
+        }}
+        onKeyUp={(e) => {
+          if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+          pushHistory({ crop: cropRef.current, zoom, rotation, bgColor })
+        }}
+      >
         <Cropper
           image={imageSrc}
           crop={crop}
@@ -225,6 +249,10 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
           </div>
         </div>
       </div>
+
+      {isViewportFocused && (
+        <p className="crop-kb-hint" aria-hidden="true">Arrow keys to pan · Tab to move to controls</p>
+      )}
 
       <div className="crop-controls">
         <div className="control-group">
@@ -270,11 +298,12 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         </div>
 
         <div className="control-group">
-          <label className="control-label">Background</label>
+          <label className="control-label" htmlFor="crop-bgcolor">Background</label>
           <div className="control-row">
             <div className="ctrl-swatch-wrap">
               <div className="ctrl-swatch" style={{ background: bgColor }} />
               <input
+                id="crop-bgcolor"
                 type="color"
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
@@ -303,6 +332,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
             className={`ctrl-pill${showGrid ? ' ctrl-pill--on' : ''}`}
             onClick={() => setShowGrid(g => !g)}
             title="Toggle rule-of-thirds grid"
+            aria-pressed={showGrid}
           >
             Grid
           </button>

@@ -47,6 +47,24 @@
   overflow: hidden;
 }
 
+.crop-viewport:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.crop-kb-hint {
+  margin: -8px 0 0;
+  font-size: 11px;
+  color: var(--foreground-muted);
+  text-align: center;
+}
+
+@media (pointer: coarse) {
+  .crop-kb-hint {
+    display: none;
+  }
+}
+
 /* Guide overlay layer — sits on top of react-easy-crop, no pointer events */
 .crop-guides-layer {
   position: absolute;
@@ -279,7 +297,6 @@
 
 .key-desc {
   color: var(--foreground-muted);
-  opacity: 0.75;
 }
 
 .crop-low-res {

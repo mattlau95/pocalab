@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { Card } from '../models/card'
 import './DeckCard.css'
 
@@ -16,6 +16,8 @@ interface Props {
 export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, onEditSide }: Props) {
   const frontInputRef = useRef<HTMLInputElement>(null)
   const backInputRef = useRef<HTMLInputElement>(null)
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') {
     const file = e.target.files?.[0]
@@ -31,16 +33,39 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
     a.click()
   }
 
+  function handleRemove() {
+    setRemoving(true)
+    const timeout = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 200
+    setTimeout(onRemove, timeout)
+  }
+
   return (
-    <div className="deck-card">
-      <button
-        className="deck-card__remove"
-        onClick={() => { if (window.confirm('Remove this card from your deck?')) onRemove() }}
-        title="Remove card"
-        aria-label="Remove card"
-      >
-        ×
-      </button>
+    <div className={`deck-card${removing ? ' deck-card--removing' : ''}`}>
+      {confirmingRemove ? (
+        <div className="deck-card__remove-confirm">
+          <button
+            className="deck-card__remove-yes"
+            onClick={handleRemove}
+            title="Confirm removal"
+            aria-label="Confirm removal"
+          >✓</button>
+          <button
+            className="deck-card__remove-no"
+            onClick={() => setConfirmingRemove(false)}
+            title="Cancel"
+            aria-label="Cancel removal"
+          >✕</button>
+        </div>
+      ) : (
+        <button
+          className="deck-card__remove"
+          onClick={() => setConfirmingRemove(true)}
+          title="Remove card"
+          aria-label="Remove card"
+        >
+          ×
+        </button>
+      )}
 
       <div className="deck-card__thumbs">
         <div className="deck-card__thumb-col">

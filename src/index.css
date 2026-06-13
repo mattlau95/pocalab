@@ -64,6 +64,16 @@ p {
   outline-offset: 2px;
 }
 
+html {
+  scroll-padding-top: 80px;
+}
+
+@media (pointer: coarse) {
+  html {
+    scroll-padding-bottom: 110px;
+  }
+}
+
 .seo-lede {
   position: absolute;
   width: 1px;
