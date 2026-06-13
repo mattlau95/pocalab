@@ -39,8 +39,29 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
   // Rendered media dimensions from react-easy-crop (zoom=1 display size, not natural pixels)
   const [renderedMedia, setRenderedMedia] = useState<{ width: number; height: number } | null>(null)
+  const [cropSize, setCropSize] = useState(DISPLAY_CROP)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
+
+  // Scale cropSize to always fit the viewport container, maintaining card aspect ratio
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el) return
+    const compute = () => {
+      const { width, height } = el.getBoundingClientRect()
+      if (!width || !height) return
+      let w = width - 4
+      let h = w / CARD_ASPECT
+      if (h > height - 4) { h = height - 4; w = h * CARD_ASPECT }
+      const nw = Math.floor(w), nh = Math.floor(h)
+      setCropSize(s => s.width === nw && s.height === nh ? s : { width: nw, height: nh })
+    }
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    compute()
+    return () => ro.disconnect()
+  }, [])
 
   // Detect natural image size; reset rendered media so stale dims don't trigger auto-fill
   useEffect(() => {
@@ -56,12 +77,12 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
     if (!imgSize || !renderedMedia) return
     if (imgSize.w === CARD_BLEED.widthPx && imgSize.h === CARD_BLEED.heightPx) {
       const fillZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
-        Math.max(DISPLAY_CROP.width / renderedMedia.width, DISPLAY_CROP.height / renderedMedia.height)
+        Math.max(cropSize.width / renderedMedia.width, cropSize.height / renderedMedia.height)
       ))
       setZoom(fillZoom)
       setCrop({ x: 0, y: 0 })
     }
-  }, [imgSize, renderedMedia])
+  }, [imgSize, renderedMedia, cropSize])
 
   // Undo / redo — stored in refs so handlers always see current values
   const historyRef = useRef<Snapshot[]>([{ crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }])
@@ -136,7 +157,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
   function fillToBleed() {
     if (!renderedMedia) return
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
-      Math.max(DISPLAY_CROP.width / renderedMedia.width, DISPLAY_CROP.height / renderedMedia.height)
+      Math.max(cropSize.width / renderedMedia.width, cropSize.height / renderedMedia.height)
     ))
     const c = { x: 0, y: 0 }
     setZoom(newZoom)
@@ -166,14 +187,14 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
     <div className="crop-editor">
       {label && <p className="crop-editor__label">{label}</p>}
 
-      <div className="crop-viewport" style={{ background: bgColor }}>
+      <div className="crop-viewport" style={{ background: bgColor }} ref={viewportRef}>
         <Cropper
           image={imageSrc}
           crop={crop}
           zoom={zoom}
           rotation={rotation}
           aspect={CARD_BLEED.widthMm / CARD_BLEED.heightMm}
-          cropSize={DISPLAY_CROP}
+          cropSize={cropSize}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           restrictPosition={false}
@@ -187,7 +208,7 @@ export function CropEditor({ imageSrc, label, onConfirm, onCancel }: Props) {
         />
 
         <div className="crop-guides-layer" aria-hidden>
-          <div className="crop-guides-frame" style={{ width: DISPLAY_CROP.width, height: DISPLAY_CROP.height }}>
+          <div className="crop-guides-frame" style={{ width: cropSize.width, height: cropSize.height }}>
             {showGrid && (
               <div className="guide guide--grid" style={{ width: '100%', height: '100%' }}>
                 <div className="grid-line grid-line--v1" />

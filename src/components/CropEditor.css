@@ -319,7 +319,7 @@
 
 @media (max-width: 639px) {
   .crop-viewport {
-    height: 360px;
+    height: clamp(320px, 55vw, 440px);
   }
 
   .crop-key {

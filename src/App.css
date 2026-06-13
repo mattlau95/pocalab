@@ -10,6 +10,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  position: relative;
 }
 
 .app-header h1 {
@@ -50,9 +51,14 @@
 }
 
 .app-header__count {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 13px;
   color: var(--foreground-muted);
   opacity: 0.7;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .app-main {
