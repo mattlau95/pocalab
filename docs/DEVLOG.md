@@ -1,0 +1,409 @@
+# Devlog — pocalab
+
+_A series on building a browser tool to print K-pop photocards exactly right._
+
+---
+
+## Introduction
+
+I print my own K-pop photocards. This is the log of building a proper tool to do it.
+
+### The hobby
+
+Photocards are small trading cards — 55 × 85 mm — that come packaged with K-pop albums and merch. Fans collect them, trade them, and hunt specific members or versions the same way you'd chase a rare Pokémon card. Part of the culture is also making your own: custom cards of eras that didn't get official prints, photosets from concert footage, cards of niche groups that never made it to wide distribution. You print them, cut them, sleeve them. They feel real because they are real — same size, same card stock, same weight in your hand.
+
+### The manual reality
+
+My current workflow lives in a Canva file I built years ago. It has bleed zones, cut lines, and alignment guides baked in — a US Letter sheet laid out for duplex printing, with slots for front and back pairs. It works. It's also a slog every single time.
+
+Every new batch means: find the source images, crop each one to fit the bleed area without cutting off faces or text, drag it onto the Canva canvas, nudge it until it aligns with the guides, repeat for the back, repeat for every card in the set, export, print, check the duplex alignment, sometimes reprint. If I want two copies of one card and one of another, I'm manually duplicating and repositioning. If the image is portrait but slightly off-ratio, I'm eyeballing it. The process is the same every time, and it never gets faster.
+
+### The itch to automate
+
+At some point I caught myself re-cropping the same image for the third time because I'd nudged it two pixels off and the bleed looked wrong, and the thought that stopped me was: _I build software for a living. Why am I doing this by hand?_
+
+This is a fixed, repeatable process. The card dimensions don't change. The sheet layout doesn't change. The duplex registration doesn't change. Every step I do manually in Canva is a step a tool could do deterministically, in seconds, with no eyeballing required. The only variable is the images themselves — and even that's just a crop with a known target size.
+
+### The vision
+
+Upload your images → crop each one to exact card spec with bleed → arrange your deck → generate a print-ready double-sided US Letter PDF. Goodbye Canva.
+
+### The catch — why it's not trivial
+
+If this were just "put images on a PDF," it'd be a weekend script. The interesting parts are:
+
+**Hitting exact physical dimensions from a browser.** A 55 mm card has to be exactly 55 mm when it comes out of the printer, which means the PDF has to encode dimensions precisely in points (72 pt/inch), not pixels, and the image data has to be rasterized at 300 DPI. Getting mm → px → pt to agree without rounding errors is where the math lives.
+
+**Bleed, trim, and safe zones.** The image extends to 59 × 89 mm (bleed) so there's no white edge if the cut drifts slightly. The cut target is 55 × 85 mm. Anything important — text, faces, key art — has to stay inside 51 × 81 mm (safe zone). The crop tool has to enforce all three simultaneously.
+
+**Front/back duplex alignment.** Printing double-sided means the front of card 1 and the back of card 1 have to land on opposite sides of the same sheet in the right positions for the page to fold or flip correctly. Get the layout wrong and every card comes out with a misaligned back.
+
+**Two-hole calibration.** The clever bit: rather than trusting that every printer's duplex alignment is perfect, the plan is to build a calibration sheet — print it once, punch two holes through both layers, measure the offset, and feed that offset back in as a correction. Mechanical registration instead of trial and error.
+
+That's enough to earn a devlog.
+
+### What's ahead
+
+This series will cover locking the print spec and why those numbers are what they are, the architecture decisions for a purely client-side app, building the crop tool, the PDF generation pipeline, and the calibration system. Entry one is below.
+
+---
+
+## 2026-06-13 — Brand: pocalab
+
+The project has a name. **pocalab** — lowercase, no space, an obvious portmanteau of "poca" (short for photocard in fan communities) and "lab." The subtitle is "a K-pop photocard maker."
+
+The name change touched more files than expected. The `<title>`, all OG/Twitter meta tags, the h1, the OG image SVG, and the seo-lede section in `index.html`. The git remote was updated after the GitHub repo was renamed. The Vercel project was created as `pocalab` directly, giving `pocalab.vercel.app` as the default deployment URL.
+
+The header was redesigned around the name: a card-stack icon sits to the left of the h1, a diagonal dashes mark sits to the right, both scaled to match the cap height of the Fredoka text. A tagline — "a K-pop photocard maker" — sits below in a smaller muted style. The icons are imported as PNGs with transparent backgrounds.
+
+Custom domains `pocalab.app` and `pocalab.com` were purchased on Porkbun. DNS was configured with A records pointing to Vercel's IP (`76.76.21.21`) and CNAME records for `www` to `cname.vercel-dns.com`. In Vercel, `pocalab.app` is the primary production domain; `pocalab.com` and both `www` variants redirect to it with 308s.
+
+---
+
+## 2026-06-13 — Design tokens, theming, and typography
+
+Renamed all CSS custom properties to Shadcn/Radix-style tokens throughout the codebase: `--background`, `--foreground`, `--foreground-muted`, `--surface`, `--border`, `--primary`, `--primary-hover`, `--primary-foreground`, `--primary-muted`, `--destructive`, `--destructive-muted`, `--destructive-border`. The old names were ad hoc; these names travel well across components without context.
+
+Two named palettes:
+
+**Saja Boys (light mode)** — a warm cream and brown base with a hot pink primary. Background `#FFFBF7`, foreground `#1E1208`, surface `#F5E8D8`, border `#F0DCCA`. Primary `#EE4897`.
+
+**Huntrix (dark mode)** — a deep purple-black base. Background `#0C0818`, foreground `#EDD9FF`, surface `#160D30`, border `#281A46`. Primary `#EE4897`.
+
+Both palettes share the same primary color. The `--primary-muted` value is a semi-transparent version used for hover states and subtle backgrounds (0.08 alpha in light, 0.12 in dark).
+
+[Fredoka](https://fonts.google.com/specimen/Fredoka) replaces system-ui for the h1. It's a rounded, friendly display font that reads as playful without being childish — right register for K-pop fan tooling. Loaded at weights 400 and 600 via Google Fonts preconnect. `text-transform: lowercase` is applied to h1 via CSS so the markup can be written naturally but the rendered result is always lowercase, which is part of the brand.
+
+---
+
+## 2026-06-13 — SEO and discoverability (MAT-296, MAT-302–304)
+
+A static SPA with no server-rendered HTML is invisible to search crawlers unless you put the content somewhere they can find it. Three approaches layered together:
+
+**Meta tags** — full `<title>`, `<meta name="description">`, and Open Graph / Twitter card tags added to `index.html`. Titles and descriptions written for the actual search query ("k-pop photocard maker," "print photocards at home") rather than developer-friendly names.
+
+**OG image** — `public/og-image.svg` is a 1200×630 banner in the Huntrix palette: "pocalab" at large display size, the subtitle in primary pink, three feature pills, and a decorative photocard stack. SVG rather than PNG because it's a fraction of the file size for this kind of flat graphic and Vercel serves it correctly with the right MIME type. Most social platforms accept SVG for OG images.
+
+**Sitemap and robots.txt** — `public/sitemap.xml` lists the single URL at `pocalab.app`. `public/robots.txt` points crawlers to the sitemap and allows all. Both are in `public/` so Vite copies them to the dist root without any plugin configuration.
+
+**Crawler lede** — A `<section class="seo-lede" aria-hidden="true">` placed after `#root` in `index.html`. Crawlers see the h2 and description text directly; screen readers and visual users don't, because the section is visually hidden via the standard `position: absolute; width: 1px; height: 1px; clip: rect(0,0,0,0)` pattern. This is the most reliable way to get indexed content into a React SPA without SSR.
+
+---
+
+## 2026-06-13 — Shared back, localStorage, A4, lazy PDF (MAT-297–300)
+
+Four independent features shipped together.
+
+### Shared back (MAT-297)
+
+The upload-back step now shows a "Use shared back" option when one has been set. Any card's back can be marked "set as shared back for all cards" via a checkbox — that data URL is stored on the deck as `sharedBack: string | null`. Subsequent cards can tap **Use** to adopt it without re-uploading or re-cropping.
+
+This covers the common case: you're printing a themed set where the back design is the same across all 9 cards. Previously you had to upload and crop the same back 9 times. Now you do it once.
+
+The deck model gained `sharedBack`. The `expandDeck` function (which unfolds cards × copies into PDF slots) falls back to `deck.sharedBack` when a card's own `back` is null.
+
+### localStorage persistence (MAT-298)
+
+`useDeck` now persists the deck to `localStorage` on every state change and rehydrates on mount. The hydration uses `{ ...createDeck(), ...JSON.parse(raw) }` — spreading a fresh deck first means future fields added to `Deck` have correct defaults even when an old saved value is loaded.
+
+### A4 support (MAT-299)
+
+A `PageConfig` interface abstracts page dimensions and margins. Two configs: `LETTER_CONFIG` (612×792 pt, 3×3 grid of photocards) and `A4_CONFIG` (595×842 pt, also 3×3 — nine photocards fit on A4 with ~16.5 mm horizontal and ~15 mm vertical margins).
+
+A paper size toggle in the deck actions bar switches between US Letter and A4. The selection is passed to `createPhotocardPdf` at export time. All layout math derives from `PageConfig` — no hardcoded page sizes anywhere outside the two config objects.
+
+### Lazy PDF loading (MAT-300)
+
+pdf-lib is ~200 KB. Previously it was bundled with the main chunk and loaded on every page view, even for users who never export. Changed to dynamic import: `const { createPhotocardPdf } = await import('./utils/pdf')`. Vite picks this up and splits pdf-lib (plus the layout and pdf utility modules) into a separate chunk. The chunk is fetched only when the user clicks "Download PDF."
+
+---
+
+## 2026-06-13 — Ko-fi support button and print tip (MAT-305–306)
+
+Two lightweight monetization touches.
+
+**Ko-fi button** — A "☕ Support" link in the app header, right-aligned via `margin-left: auto`. Styled as a surface-colored pill with a border, consistent with the rest of the UI. Links to `ko-fi.com/mattlau95`. No tracking, no pop-up, no nag.
+
+**Print tip banner** — After a PDF is downloaded, a dismissible banner appears: "Want professional prints? Try Sticker Mule →" with a link to Sticker Mule's business card printing page. This is shown exactly once per download action (`showPrintTip` state, reset by the dismiss button). The banner uses `--primary-muted` as a background so it reads as a tip rather than an error or alert. Sticker Mule prints at business card spec, which is close enough to photocard spec that the output PDF works there with no modifications.
+
+---
+
+## 2026-06-13 — Mobile crop fixes (MAT-310–312)
+
+Three bugs surfaced on mobile that didn't exist on desktop.
+
+### MAT-311 — Crop frame overflowing the viewport
+
+`DISPLAY_CROP` was a hardcoded `{ width: 295, height: 445 }` constant passed directly to react-easy-crop's `cropSize` prop. On mobile, a CSS media query set `.crop-viewport` to `360px` tall — but the crop frame was 445px, so it overflowed the container and was partially hidden. The guides overlay was also sized in fixed pixels, so the guide lines were misaligned with the visible portion of the frame.
+
+Fixed with a `ResizeObserver` on the viewport element. On every container resize, it computes the largest crop frame (at the photocard 59:89 aspect ratio) that fits within the current container dimensions with a 4px inset, and updates a `cropSize` state value. The `Cropper` component, the guides frame, `fillToBleed`, and the auto-fill effect all consume `cropSize` instead of the old constant. The mobile viewport height was also increased to `clamp(320px, 55vw, 440px)` to give the crop frame more room.
+
+### MAT-312 — Small images stretched to fill the output
+
+`getCroppedDataUrl` had:
+```ts
+outCtx.drawImage(rotCanvas, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, out.width, out.height)
+```
+
+This unconditionally stretched whatever region was in `pixelCrop` to fill the entire 696×1051 output. When the source image was smaller than the bleed frame, `pixelCrop` covered the full source image (e.g. 300×450 px), and those pixels were stretched to 696×1051. On desktop this was masked because users typically upload large photos; on mobile, small screenshots and low-resolution images are more common.
+
+The fix clips `pixelCrop` to the rotated canvas bounds, then maps the clipped region to its proportional position in the output:
+
+```ts
+const srcX = Math.max(0, pixelCrop.x)
+const srcY = Math.max(0, pixelCrop.y)
+const srcW = Math.min(rotCanvas.width, pixelCrop.x + pixelCrop.width) - srcX
+const srcH = Math.min(rotCanvas.height, pixelCrop.y + pixelCrop.height) - srcY
+const scaleX = out.width / pixelCrop.width
+const scaleY = out.height / pixelCrop.height
+outCtx.drawImage(rotCanvas, srcX, srcY, srcW, srcH,
+  (srcX - pixelCrop.x) * scaleX, (srcY - pixelCrop.y) * scaleY,
+  srcW * scaleX, srcH * scaleY)
+```
+
+A small image now composites at its proportional size onto the background color, matching desktop behavior.
+
+### MAT-310 — Card count badge positioning
+
+The `X / 9 cards` badge in the idle view header was left-aligned after the brand, making it look like a subtitle of the logo rather than a global page stat. Made it `position: absolute; left: 50%; transform: translateX(-50%)` so it's always horizontally centered in the header regardless of brand and Ko-fi button widths.
+
+---
+
+## 2026-06-10 — Crop editor: seven UX improvements (MAT-218–224)
+
+Seven features across the crop editor and the add-card flow.
+
+### MAT-222 — Disable scroll-to-zoom
+
+Mouse wheel scroll inside the viewport was zooming the image, which conflicted with normal page scroll and felt jarring. Added `zoomWithScroll={false}` to the `<Cropper>` component. Zoom is now keyboard- and control-only: the − / + step buttons, the size slider, or pinch on mobile.
+
+### MAT-219 — Fix "Background" label overlap
+
+The `.control-label` width was hardcoded at `44px` — wide enough for "Rotate" and "Size" but not "Background". Widened to `80px`, pushing the control row right enough to clear the text without wasting space.
+
+### MAT-220 — Center button
+
+Added a **Center** pill button at the bottom of the controls panel. It calls `setCrop({ x: 0, y: 0 })` and immediately pushes an undo snapshot so the action is reversible. Useful after panning away or after applying a rotation that shifts the image off-center.
+
+### MAT-221 — Undo / redo
+
+Undo and Redo pills sit beside Center in the controls panel. History is stored in refs rather than state (avoids stale-closure issues in event handlers). The snapshot type captures `{ crop, zoom, rotation, bgColor }`.
+
+Snapshots are pushed on discrete actions: rotate buttons, zoom step buttons, center, and eyedropper pick. For sliders, a snapshot is pushed on `onPointerUp` using the DOM element's final value — this way dragging doesn't flood the history stack, but the settled position is always captured. The initial state (zoom=1, rotation=0, center) is the first history entry, so Undo is disabled on load and the user can always return to the starting state.
+
+### MAT-218 — Front preview on the upload-back step
+
+The add-card flow's second screen now shows a thumbnail of the front that was just cropped, with a "Front" label and an **Edit** button underneath. Clicking Edit re-enters the crop editor with the front's data URL as the image source and an `editingPending` flag on the step state. On confirm, the updated data URL is patched back into the pending card and the flow returns to the upload-back screen without creating a new card.
+
+Cancel from crop-front (when editing a pending card) correctly returns to upload-back rather than discarding the session. Cancel from crop-back (before back is confirmed) also returns to upload-back, preserving the pending back image as `pendingBackSrc` so a "Replace?" confirmation can fire if the user picks a different back file later.
+
+### MAT-223 — Rule-of-thirds grid toggle
+
+Added a **Grid** toggle pill in the controls panel. When active, four 1 px semi-transparent white lines appear at the 33% and 66% marks both horizontally and vertically, rendered as absolutely-positioned divs inside the guide overlay (below the bleed/trim/safe borders so the zone colors remain visible). The grid state resets each time a new image is loaded.
+
+### MAT-224 — Responsive label + key layout
+
+On viewports ≥ 900 px the crop editor switches from a flex column to a CSS Grid with two columns: the main column (viewport, controls, actions at 600 px) and a side column that holds the key panel beside the step label. On narrow viewports the key panel remains below the controls as before — no DOM duplication needed, just `grid-template-areas` reassigning positions based on the media query.
+
+The `max-width` of the crop editor was expanded from `600px` to `960px` to accommodate the two-column layout.
+
+---
+
+## 2026-06-10 — Epic 3: Deck Builder (MAT-146)
+
+With the crop tool in place, the next step is assembling a deck — building a card from two crops, viewing the deck, managing copy counts, and wiring up the remove and edit flows.
+
+### MAT-160 — Build a card from front + back crops
+
+The add-card flow is now a two-step sequence managed by a step machine in `App.tsx`:
+
+1. **Upload front** → crop editor labeled "Step 1 of 2 — Crop the front"
+2. **Upload back** → crop editor labeled "Step 2 of 2 — Crop the back"
+3. Confirm back → card is added to the deck, return to idle
+
+The pending card lives in step state (`{ id: 'upload-back', pendingCard: Card }`) between the two crops, so it never touches the deck until both sides are confirmed. Cancel at any point revokes the object URL and discards the pending card.
+
+The same `CropEditor` component is reused for both sides — it just receives a `label` prop indicating which step it's on.
+
+### MAT-161 — Deck view with thumbnails and copy stepper
+
+`DeckCard` is a new component that represents a single card in the deck. It shows both thumbnails side by side (60×90 px each, bleed aspect ratio) with a "Front / Back" label and an Edit button under each side. Below the thumbnails is a copy stepper: − count + with the current count in the center.
+
+The deck header shows `X / 9 cards` where X is the total copy count across all cards, not the number of unique cards. That's the number that actually matters — it's what determines how many card slots the sheet will use.
+
+### MAT-162 — Edit, remove, and cap enforcement
+
+**Edit**: Clicking Edit on a side opens a hidden `<input type="file">`. Picking a file transitions to an `edit-side` step, runs the crop editor, then calls `updateCard(id, { [side]: dataUrl })` — a new reducer action that patches just the front or back of an existing card without touching anything else.
+
+**Remove**: Each card has a × button at the top-right corner. Calls `removeCard`, which deletes both the card and its copies entry from state.
+
+**Cap fix**: The original `ADD_CARD` guard checked `deck.cards.length >= 9` — that caps unique cards, not total copy slots. Fixed to check `sumCopies(deck.copies) >= 9`. `SET_COPIES` also now enforces the ceiling: it computes the new total and returns the current state unmodified if incrementing would push past 9. The stepper's + button is disabled when `copies >= maxCopies`, where `maxCopies = 9 - total + currentCopiesForThisCard`.
+
+When the deck is full the upload zone is hidden and replaced with a short "Deck is full" message.
+
+---
+
+## 2026-06-10 — Crop editor: background color and sub-100% zoom
+
+Two related additions to the crop editor that open up a new class of source images: PNGs with transparency and images smaller than the card frame.
+
+### Background color
+
+The crop viewport previously had a hardcoded `#111` background. Now it accepts a `bgColor` state (default `#ffffff`) passed as an inline style on the container. The same value is forwarded to `getCroppedDataUrl` and applied as a `fillRect` on the output canvas before the image is drawn — so any transparent pixels in the source, or any canvas area outside the image bounds, export with the chosen background color rather than black or alpha.
+
+The controls panel has a new Background row: a color swatch button that triggers a hidden `<input type="color">`, showing the current color and the hex value as a readout.
+
+If the browser supports the [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper) (Chrome/Edge), a dropper button appears next to the swatch. It lets you sample any pixel on screen — including directly from the crop viewport — and sets that as the background color. Useful when the card image has a border or matte color you want to match. On unsupported browsers the button simply doesn't render.
+
+### Zoom below 100%
+
+`MIN_ZOOM` was 1, meaning the image always had to fill the entire bleed area. Changed to 0.1 — the image can now be placed at 10% size or anywhere in between, leaving the background color visible in the empty areas.
+
+`restrictPosition={false}` was added to the Cropper so that when the image is smaller than the crop frame it can be freely positioned anywhere, rather than being snapped to center. This matters for cases like placing a small logo or sticker at a specific spot on a colored background.
+
+---
+
+## 2026-06-08 — Epic 2: Crop Tool (MAT-145)
+
+The crop tool is the core of the whole app — everything else depends on it producing a correctly sized image. The goal: given an arbitrary photo, let the user frame it within the bleed bounds, then export exactly 697×1051 px of source image data.
+
+### MAT-155 — Image upload
+
+`ImageUpload` is a drag-drop zone with a file picker fallback. Validates on the client before anything touches the DOM: accepted types are JPEG, PNG, and WebP; max file size is 50 MB. Rejected files get an inline error. Accepted files produce a `File` object — the component doesn't touch URLs or data, that's the caller's job.
+
+The 50 MB cap is conservative — most source images are under 10 MB — but it prevents someone from accidentally dropping a raw file from a mirrorless camera and wondering why the tab froze.
+
+### MAT-156 — Crop UI with bleed / trim / safe guides
+
+Three nested overlays rendered on top of the crop viewport, all driven by the same `CARD_*` constants from `dimensions.ts`:
+
+- **Bleed (59×89 mm)** — the crop frame itself. The exported image fills to here.
+- **Trim (55×85 mm)** — dashed white line at 93.2% of the bleed frame. Cut target.
+- **Safe zone (51×81 mm)** — amber line at 86.4% of the bleed frame. Keep faces and text inside this.
+
+The guides are absolutely positioned divs centered over the crop frame using percentages derived from the mm constants. They're `pointer-events: none` so they don't interfere with panning.
+
+### MAT-157 — Pan / zoom / position
+
+Handled by [react-easy-crop](https://github.com/ValentinoUberti/react-easy-crop). The crop frame is fixed at 295×445 px on screen (59:89 ratio at 5 px/mm). The image pans and zooms underneath it. `minZoom=1` enforces that the image always covers the full bleed area — no empty edges in the export.
+
+The library outputs `croppedAreaPixels: { x, y, width, height }` — the rectangle of source pixels that maps to the crop frame. That's all we need for the export step.
+
+### MAT-158 — Low-res warning
+
+When `croppedAreaPixels.width < 697 || croppedAreaPixels.height < 1051`, the source image doesn't have enough pixels for a 300 DPI output at card size. A red warning banner appears. It doesn't block the export — the user might intentionally be printing a smaller card, or they might accept a slightly soft result — but they're informed.
+
+This fires most often when someone zooms in heavily on a low-resolution source.
+
+### MAT-159 — Canvas export at 300 DPI
+
+`getCroppedDataUrl` in `src/utils/cropImage.ts`: creates an offscreen 697×1051 canvas, draws the `croppedAreaPixels` region of the source image onto it scaled to fill, and returns a PNG data URL. The canvas dimensions match `CARD_BLEED.widthPx` / `heightPx` from the constants — again, one source of truth.
+
+The same component and utility are used for both front and back. The caller decides which card slot gets the result.
+
+### App wiring
+
+`App.tsx` now manages a two-step flow: idle (upload zone + card grid) and crop (full-screen crop editor). On confirm, `URL.revokeObjectURL` cleans up the object URL immediately, and the card is added to the in-memory deck with `front` set. The card grid in the idle view shows thumbnails of confirmed fronts.
+
+### Iteration: rotate and zoom controls
+
+After first pass, two missing interactions were obvious: there was no way to rotate a portrait image that came in landscape, and zoom was scroll-only with no visible feedback.
+
+Added a controls panel below the viewport with two rows:
+
+**Rotate** — ↺ / ↻ buttons snap 90° in either direction for the common case (fixing a sideways scan). A slider between them covers fine rotation from −180° to +180°, with a live degree readout. The snap buttons are the part that gets used 95% of the time; the slider is there for tilted photos.
+
+**Size** — − / + buttons step zoom by 10%. A slider covers the full 1×–4× range with a percentage readout. Scroll in the viewport still works as before for people who expect it.
+
+The canvas export needed updating too. react-easy-crop gives crop coordinates in rotated image space, so the export utility now draws the source image rotated onto an intermediate canvas first, then crops from that. Without this step, a rotated image would export with the wrong region selected.
+
+### Iteration: distinct guide lines and labeled key
+
+The first guide pass used dashed white and amber lines that were easy to miss against a busy image. Replaced with three visually distinct colors:
+
+- **Cyan** — bleed (now rendered as an explicit overlay, not just implied by the crop frame border)
+- **Red** — trim / cut line
+- **Green** — safe zone
+
+All three are 2 px solid. The old compact legend was replaced with a key panel: each row shows a matching colored swatch, the zone name and dimensions, and a plain-English description of what the zone means. Useful for anyone who hasn't printed photocards before and doesn't know what "bleed" means.
+
+---
+
+## 2026-06-08 — Epic 1: Foundation & Data Model (MAT-144)
+
+### What this app is
+
+Client-side web app to replace a manual Canva workflow for printing K-pop photocards. You upload images, crop them to card spec with bleed, build a deck, and generate a print-ready double-sided US Letter PDF with two-hole duplex calibration. No backend, no server — everything runs in the browser.
+
+### Print spec (locked)
+
+| Zone   | Width | Height |
+|--------|-------|--------|
+| Bleed (full print area) | 59 mm / 697 px | 89 mm / 1051 px |
+| Trim (cut line) | 55 mm / 650 px | 85 mm / 1004 px |
+| Safe zone | 51 mm | 81 mm |
+
+All pixel values are at 300 DPI: `floor(mm × 300 / 25.4)`.
+
+---
+
+### MAT-150 — Scaffold (React + Vite + TypeScript)
+
+Initialized from `npm create vite@latest . -- --template react-ts`. Stripped the default Vite counter demo and replaced it with a minimal layout shell: a header with the app name and a `<main>` content area. Set up the source structure:
+
+```
+src/
+├── components/
+├── hooks/
+├── models/
+└── utils/
+```
+
+Client-side only. No router yet — single page for now.
+
+---
+
+### MAT-151 — mm↔px Conversion Utilities
+
+`src/utils/dimensions.ts` — the single source of truth for all dimensional math:
+
+- `mmToPx(mm)` → `Math.floor(mm × 300 / 25.4)`
+- `pxToMm(px)` → inverse
+- `CARD_BLEED`, `CARD_TRIM`, `CARD_SAFE` constants derived from `mmToPx` so they're always consistent with the formula
+
+These constants will be referenced everywhere: the cropper canvas size, the PDF page layout, and eventually the crop-mark drawing logic.
+
+---
+
+### MAT-152 — Core Data Model
+
+**`Card { id, front, back }`** — `front` and `back` are data URLs (strings) or `null` if not yet uploaded. `id` is a `crypto.randomUUID()`.
+
+**`Deck { cards[], copies{} }`** — `cards` holds up to 9 `Card` objects; `copies` is a `Record<cardId, number>` for per-card copy counts (default 1 when a card is added).
+
+State is managed by `useDeck` (`src/hooks/useDeck.ts`), a `useReducer`-based hook. Three actions: `ADD_CARD` (silently no-ops if already at 9), `REMOVE_CARD`, `SET_COPIES`. Purely in-memory — no persistence layer.
+
+---
+
+### MAT-153 — beforeunload Warning
+
+`src/hooks/useBeforeUnload.ts` — takes a boolean `enabled` and registers a `beforeunload` handler that calls `e.preventDefault()` (which triggers the browser's native "leave page?" dialog). Enabled whenever `deck.cards.length > 0`. Cleans up its own listener on unmount or when disabled.
+
+An accidental refresh won't silently wipe a session mid-workflow.
+
+---
+
+### MAT-154 — PDF Library Decision: pdf-lib ✓
+
+Evaluated **pdf-lib** vs **jsPDF** for this use case.
+
+**Chose pdf-lib.** Reasons:
+
+- TypeScript-native — jsPDF's types are a community add-on
+- Full coordinate control: `page.drawImage()` and `page.drawLine()` at exact points, which is what's needed for placing cards at precise bleed/trim offsets and drawing crop marks
+- No HTML renderer — jsPDF's main selling point is irrelevant here since we're compositing cropped image data programmatically, not rendering DOM
+- Smaller bundle, actively maintained
+
+The only friction with pdf-lib is that it works in **points** (72 pt/inch), not mm. Solved by adding `mmToPt(mm)` → `mm × 72 / 25.4` to `src/utils/pdf.ts`, alongside `mmToPx` in dimensions.ts.
+
+`createPhotocardPdf` is stubbed — returns a single blank Letter page to confirm the import works. Full implementation is MAT-155+.
