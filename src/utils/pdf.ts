@@ -38,6 +38,10 @@ export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize 
   const backSlots = computeBackSlots(cfg)
   const gray = rgb(0.5, 0.5, 0.5)
 
+  // Back trim marks go down before the images so the photo covers them (clean look on the
+  // printed side); front trim marks stay on top of the images as a continuous ruler guide.
+  drawCropMarks(backPage, cfg)
+
   for (let i = 0; i < Math.min(slots.length, 9); i++) {
     const { front, back } = slots[i]
 
@@ -59,7 +63,6 @@ export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize 
   }
 
   drawCropMarks(frontPage, cfg)
-  drawCropMarks(backPage, cfg)
 
   // Orientation labels
   const gridTop = cfg.marginY + 3 * BLEED_H
