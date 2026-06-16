@@ -48,6 +48,66 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-14 — Edit back scope dialog
+
+When a second (or third, etc.) card reuses the same back from the gallery, clicking "Edit back" would now open a new file picker — because `backSrc` is only stored for cards that went through the full crop flow, not for gallery-reuse cards. More importantly, if you did edit the back and save, the other cards sharing that image would be silently left with the old version, with no way to propagate the change except editing each card individually.
+
+The fix is a Google-Calendar-style scope step. After cropping a back edit, `handleEditConfirm` checks whether any other cards in the deck currently have the same `card.back` data URL. If they do, rather than committing immediately, it transitions to a new `confirm-back-scope` step that shows the cropped result and asks: "Save to how many cards?" — with three options: **Cancel**, **Just this card**, and **Update all N cards**.
+
+"Just this card" applies the new crop only to the edited card (`back`, `backSrc`, `backState` all updated). "Update all N cards" applies the new `back` data URL to every sharing card, but only sets `backSrc`/`backState` on the primary card — the others have those fields cleared, so future edits on them will fall back to the file picker (since the edit session and blob URL belong to the card that was originally edited, not the others).
+
+Blob URL lifecycle is handled correctly in all paths: cancel revokes the new blob if it was a fresh upload but leaves it alone if it was the existing stored blob being re-edited. `handleGoHome` during the scope dialog follows the same rule.
+
+---
+
+## 2026-06-13 — UX audit and fixes (MAT-318, MAT-319)
+
+A systematic audit of pocalab against WCAG 2.2 AA, Core Web Vitals, and general UX fundamentals produced twelve findings. All twelve were fixed in one session.
+
+### Accessibility (MAT-318)
+
+**Focus obscured by sticky header / fixed deck-bar.** `scroll-padding-top: 80px` on `html` ensures focused elements aren't hidden behind the sticky app header. On touch devices, `scroll-padding-bottom: 110px` does the same for the fixed deck-bar.
+
+**Crop viewport not keyboard-accessible.** The crop viewport is now a focusable element (`tabIndex={0}`) with an `aria-label`. Arrow keys pan the image (8 px per key press). A `prefers-reduced-motion`-aware keyboard hint ("Arrow keys to pan · Tab to move to controls") appears while the viewport is focused and is hidden on touch devices. The viewport gets a `focus-visible` outline matching the primary color.
+
+**`aria-pressed` missing on Grid toggle.** The Grid pill button now carries `aria-pressed={showGrid}` so screen readers announce "pressed" / "not pressed" correctly.
+
+**Card count and toast not announced.** The `X / 9 cards` badge gained `aria-live="polite" aria-atomic="true"`. The download toast gained `role="status" aria-live="polite"`.
+
+**Background color input has no label.** Added `htmlFor="crop-bgcolor"` / `id="crop-bgcolor"` to the label/input pair.
+
+**Download button too small.** The deck-card download icon button was 20×20 px, below the WCAG 2.5.8 target-size minimum (24×24 px). Increased to 24×24.
+
+**Remove confirm buttons too small on touch.** The ✓/✕ confirm buttons were 24×24, just at the minimum. On `pointer: coarse` they're now 32×32.
+
+**Low-contrast muted text.** Eight opacity rules were removed and the text colors replaced with explicit `var(--foreground-muted)` usage: `.app-header__tagline`, `.app-header__count`, `.deck-full`, `.upload-back__front-label`, `.upload-back__divider`, `.print-tip__dismiss`, `.upload-zone__hint`, `.deck-card__side-label`. All token values already cleared 4.5:1 — the opacity was the only problem.
+
+### Performance
+
+**Google Fonts blocking render.** The two `<link rel="stylesheet">` tags for Fredoka were replaced with a non-blocking async pattern: `<link rel="preload" as="style">` + an `onload` that sets `rel="stylesheet"` + a `<noscript>` fallback. Font load no longer blocks the first paint.
+
+### Persist original upload and restore crop state (MAT-319)
+
+Before this: clicking "Edit front" or "Edit back" on a deck card opened a file picker, forcing a re-upload of the same image to re-crop it. After: the original `File`-derived blob URL is kept in memory as `card.frontSrc` / `card.backSrc` for the life of the session. `CropState` (zoom, rotation, crop position, background color) is persisted to `localStorage` as `card.frontState` / `card.backState`.
+
+When "Edit" is clicked and a stored `src` exists, `handleReEditSide` opens the crop editor directly — no file picker — with the original full-resolution image and the exact saved crop position, zoom, and rotation restored. The user can fine-tune their crop without starting from scratch.
+
+Blob URLs are revoked when the card is explicitly removed (`removeCard`), when the deck is cleared (`clearDeck`), or when a new edit session replaces the stored URL with a different file. They're stripped from `localStorage` serialization (`frontSrc`/`backSrc` fields omitted) since blob URLs are session-only and invalid after reload. After a reload, Edit falls back to the file picker, but `CropState` still restores the saved crop parameters.
+
+`CropEditor` gained an `initialState?: CropState` prop. All crop state is passed back to `onConfirm` so callers can persist it.
+
+### Logo → go home (MAT-318)
+
+Clicking the pocalab brand logo navigates back to the idle screen. If the deck has cards or a crop is in progress, a context-aware `window.confirm` fires: "Clear your deck and cancel this crop?" / "Clear your deck?" / "Cancel this crop and start over?" depending on what's active. On confirmation, all in-progress blob URLs are revoked and `clearDeck` is called.
+
+### Deck grid fills mobile width
+
+On 320–375 px viewports, the old `flex-wrap` + `clamp(140px, 45vw, 164px)` per card produced only 1 card per row — a 144 px card in a 272 px space — with a large gap to the right. The math: `45vw` at 375 px is `168.75 px`, too wide for 2 columns (168.75 × 2 + 12 = 349.5 px > 327 px available after padding).
+
+Switched `.deck-grid` to `display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr))`. Now at 320 px it's 1 column at 272 px (fills the space); at 375 px it's 2 columns at 157.5 px each. On touch devices, `.deck-card__thumb` uses `aspect-ratio: 2/3; width: 100%; height: auto` so thumbnails scale with the column. Edit and download buttons stack vertically to avoid overflowing the narrower column.
+
+---
+
 ## 2026-06-13 — Brand: pocalab
 
 The project has a name. **pocalab** — lowercase, no space, an obvious portmanteau of "poca" (short for photocard in fan communities) and "lab." The subtitle is "a K-pop photocard maker."

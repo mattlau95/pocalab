@@ -47,6 +47,7 @@ type Step =
   | { id: 'upload-back'; pendingCard: Card; pendingBackSrc?: string }
   | { id: 'crop-back'; imageSrc: string; pendingCard: Card; setAsShared: boolean }
   | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back'; initialState?: CropState }
+  | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[] }
 
 function App() {
   const { deck, total, addCard, removeCard, setCopies, updateCard, setSharedBack, clearDeck } = useDeck()
@@ -141,6 +142,10 @@ function App() {
       const storedSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
       if (step.imageSrc !== storedSrc && step.imageSrc.startsWith('blob:')) URL.revokeObjectURL(step.imageSrc)
     }
+    if (step.id === 'confirm-back-scope') {
+      const card = deck.cards.find(c => c.id === step.cardId)
+      if (step.newSrc !== card?.backSrc && step.newSrc.startsWith('blob:')) URL.revokeObjectURL(step.newSrc)
+    }
 
     clearDeck()
     setStep({ id: 'idle' })
@@ -211,15 +216,52 @@ function App() {
 
   function handleEditConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'edit-side') return
-    // Revoke the old stored src if we're replacing it with a different blob
+
     const card = deck.cards.find(c => c.id === step.cardId)
     const oldSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
     if (oldSrc && oldSrc !== step.imageSrc && oldSrc.startsWith('blob:')) {
       URL.revokeObjectURL(oldSrc)
     }
+
+    if (step.side === 'back') {
+      const originalBack = card?.back
+      const sharingCardIds = deck.cards
+        .filter(c => c.id !== step.cardId && c.back !== null && c.back === originalBack)
+        .map(c => c.id)
+
+      if (sharingCardIds.length > 0) {
+        setStep({ id: 'confirm-back-scope', dataUrl, newSrc: step.imageSrc, state, cardId: step.cardId, sharingCardIds })
+        return
+      }
+    }
+
     const srcKey = step.side === 'front' ? 'frontSrc' : 'backSrc'
     const stateKey = step.side === 'front' ? 'frontState' : 'backState'
     updateCard(step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc, [stateKey]: state })
+    setStep({ id: 'idle' })
+  }
+
+  function handleBackScopeJustThis() {
+    if (step.id !== 'confirm-back-scope') return
+    updateCard(step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
+    setStep({ id: 'idle' })
+  }
+
+  function handleBackScopeAll() {
+    if (step.id !== 'confirm-back-scope') return
+    updateCard(step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
+    for (const id of step.sharingCardIds) {
+      updateCard(id, { back: step.dataUrl, backSrc: undefined, backState: undefined })
+    }
+    setStep({ id: 'idle' })
+  }
+
+  function handleBackScopeCancel() {
+    if (step.id !== 'confirm-back-scope') return
+    const card = deck.cards.find(c => c.id === step.cardId)
+    if (step.newSrc !== card?.backSrc && step.newSrc.startsWith('blob:')) {
+      URL.revokeObjectURL(step.newSrc)
+    }
     setStep({ id: 'idle' })
   }
 
@@ -344,6 +386,31 @@ function App() {
             onConfirm={handleEditConfirm}
             onCancel={handleCancel}
           />
+        </main>
+      </div>
+    )
+  }
+
+  if (step.id === 'confirm-back-scope') {
+    const count = step.sharingCardIds.length
+    return (
+      <div className="app">
+        <AppHeader onHome={handleGoHome} />
+        <main className="app-main">
+          <div className="back-scope">
+            <div className="back-scope__thumb">
+              <img src={step.dataUrl} alt="New back" />
+            </div>
+            <p className="back-scope__title">Save to how many cards?</p>
+            <p className="back-scope__desc">
+              {count} other {count === 1 ? 'card' : 'cards'} in your deck {count === 1 ? 'uses' : 'use'} this same back.
+            </p>
+            <div className="back-scope__actions">
+              <button className="btn btn--ghost" onClick={handleBackScopeCancel}>Cancel</button>
+              <button className="btn btn--ghost" onClick={handleBackScopeJustThis}>Just this card</button>
+              <button className="btn btn--primary" onClick={handleBackScopeAll}>Update all {count + 1} cards</button>
+            </div>
+          </div>
         </main>
       </div>
     )
