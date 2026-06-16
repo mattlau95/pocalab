@@ -40,6 +40,11 @@
   margin: 0;
 }
 
+.upload-zone__hint--tip {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
 .upload-zone__error {
   color: var(--destructive);
   font-size: 13px;

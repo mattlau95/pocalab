@@ -3,6 +3,7 @@ export interface CropState {
   zoom: number
   rotation: number
   bgColor: string
+  fade?: number
 }
 
 export interface Card {

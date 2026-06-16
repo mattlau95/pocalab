@@ -48,6 +48,7 @@ export function ImageUpload({ onFile }: Props) {
         hidden
       />
       <p className="upload-zone__hint">JPEG · PNG · WebP &nbsp;·&nbsp; max 50 MB</p>
+      <p className="upload-zone__hint upload-zone__hint--tip">For best print quality, use images &gt;2 MB — Google Image Search → Tools → Size → Large</p>
       {error && <p className="upload-zone__error">{error}</p>}
     </label>
   )

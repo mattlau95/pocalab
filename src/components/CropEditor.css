@@ -65,6 +65,14 @@
   }
 }
 
+.crop-fade-overlay {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  z-index: 9;
+}
+
 /* Guide overlay layer — sits on top of react-easy-crop, no pointer events */
 .crop-guides-layer {
   position: absolute;

@@ -12,7 +12,7 @@ import type { Card, CropState } from './models/card'
 import type { Deck } from './models/deck'
 
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
-const PRINT_SERVICE_URL = 'https://www.stickermule.com/uses/business-cards'
+const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
 
 function AppHeader({ onHome }: { onHome?: () => void }) {
   return (
@@ -57,7 +57,7 @@ function App() {
   const [cardAdded, setCardAdded] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const [showPrintTip, setShowPrintTip] = useState(false)
+  const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
   useBeforeUnload(deck.cards.length > 0 || step.id !== 'idle')
 
   async function handleExport() {
@@ -72,7 +72,7 @@ function App() {
       a.download = 'photocards.pdf'
       a.click()
       URL.revokeObjectURL(url)
-      setShowPrintTip(true)
+      setShowFeedbackPrompt(true)
     } catch {
       setExportError('PDF generation failed — please try again.')
     } finally {
@@ -512,13 +512,13 @@ function App() {
           </div>
         )}
 
-        {showPrintTip && (
-          <div className="print-tip">
-            <span>Want professional prints? Try</span>
-            <a href={PRINT_SERVICE_URL} target="_blank" rel="noopener noreferrer" className="print-tip__link">
-              Sticker Mule →
+        {showFeedbackPrompt && (
+          <div className="feedback-prompt">
+            <span>Enjoying pocalab? We'd love your feedback.</span>
+            <a href={FEEDBACK_FORM_URL} target="_blank" rel="noopener noreferrer" className="feedback-prompt__link">
+              Share feedback →
             </a>
-            <button className="print-tip__dismiss" onClick={() => setShowPrintTip(false)} aria-label="Dismiss">×</button>
+            <button className="feedback-prompt__dismiss" onClick={() => setShowFeedbackPrompt(false)} aria-label="Dismiss">×</button>
           </div>
         )}
 

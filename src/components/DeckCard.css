@@ -120,6 +120,21 @@
   background: var(--surface);
 }
 
+.deck-card__replace {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground-muted);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.deck-card__replace:hover {
+  background: var(--surface);
+}
+
 .deck-card__copies {
   display: flex;
   align-items: center;
@@ -179,7 +194,8 @@
     gap: 4px;
   }
 
-  .deck-card__edit {
+  .deck-card__edit,
+  .deck-card__replace {
     padding: 6px 8px;
     font-size: 12px;
     text-align: center;

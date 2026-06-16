@@ -299,7 +299,7 @@
   background: var(--border);
 }
 
-.print-tip {
+.feedback-prompt {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -312,17 +312,17 @@
   margin-bottom: 16px;
 }
 
-.print-tip__link {
+.feedback-prompt__link {
   color: var(--primary);
   font-weight: 600;
   text-decoration: none;
 }
 
-.print-tip__link:hover {
+.feedback-prompt__link:hover {
   text-decoration: underline;
 }
 
-.print-tip__dismiss {
+.feedback-prompt__dismiss {
   margin-left: auto;
   background: transparent;
   border: none;

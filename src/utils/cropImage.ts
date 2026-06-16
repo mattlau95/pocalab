@@ -12,6 +12,7 @@ export async function getCroppedDataUrl(
   pixelCrop: PixelArea,
   rotation = 0,
   bgColor = '#ffffff',
+  fade = 0,
 ): Promise<string> {
   const image = await loadImage(imageSrc)
 
@@ -24,7 +25,7 @@ export async function getCroppedDataUrl(
   const rotCanvas = document.createElement('canvas')
   rotCanvas.width = bBoxW
   rotCanvas.height = bBoxH
-  const rotCtx = rotCanvas.getContext('2d')!
+  const rotCtx = rotCanvas.getContext('2d', { colorSpace: 'srgb' })!
   rotCtx.translate(bBoxW / 2, bBoxH / 2)
   rotCtx.rotate(rotRad)
   rotCtx.translate(-image.width / 2, -image.height / 2)
@@ -36,7 +37,7 @@ export async function getCroppedDataUrl(
   const out = document.createElement('canvas')
   out.width = CARD_BLEED.widthPx
   out.height = CARD_BLEED.heightPx
-  const outCtx = out.getContext('2d')!
+  const outCtx = out.getContext('2d', { colorSpace: 'srgb' })!
   outCtx.fillStyle = bgColor
   outCtx.fillRect(0, 0, out.width, out.height)
 
@@ -60,6 +61,11 @@ export async function getCroppedDataUrl(
       srcW * scaleX,
       srcH * scaleY,
     )
+  }
+
+  if (fade > 0) {
+    outCtx.fillStyle = `rgba(255,255,255,${fade / 100})`
+    outCtx.fillRect(0, 0, out.width, out.height)
   }
 
   return out.toDataURL('image/png')

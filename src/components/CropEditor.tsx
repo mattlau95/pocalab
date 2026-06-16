@@ -34,6 +34,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
   const [zoom, setZoom] = useState(initialState?.zoom ?? 1)
   const [rotation, setRotation] = useState(initialState?.rotation ?? 0)
   const [bgColor, setBgColor] = useState(initialState?.bgColor ?? DEFAULT_BG)
+  const [fade, setFade] = useState(initialState?.fade ?? 0)
   const [showGrid, setShowGrid] = useState(false)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isLowRes, setIsLowRes] = useState(false)
@@ -106,7 +107,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
     if (histIdxRef.current <= 0) return
     histIdxRef.current--
     const s = historyRef.current[histIdxRef.current]
-    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor)
+    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor); setFade(s.fade ?? 0)
     setHistTick(t => t + 1)
   }
 
@@ -114,7 +115,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
     if (histIdxRef.current >= historyRef.current.length - 1) return
     histIdxRef.current++
     const s = historyRef.current[histIdxRef.current]
-    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor)
+    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor); setFade(s.fade ?? 0)
     setHistTick(t => t + 1)
   }
 
@@ -134,8 +135,8 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
     setExportError(null)
     setExporting(true)
     try {
-      const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels, rotation, bgColor)
-      onConfirm(dataUrl, { crop, zoom, rotation, bgColor })
+      const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels, rotation, bgColor, fade)
+      onConfirm(dataUrl, { crop, zoom, rotation, bgColor, fade })
     } catch {
       setExportError('Something went wrong exporting your crop — please try again.')
     } finally {
@@ -146,19 +147,19 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
   function rotate(deg: number) {
     const newRot = ((rotation + deg) % 360 + 360) % 360
     setRotation(newRot)
-    pushHistory({ crop, zoom, rotation: newRot, bgColor })
+    pushHistory({ crop, zoom, rotation: newRot, bgColor, fade })
   }
 
   function stepZoom(delta: number) {
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(zoom + delta).toFixed(2)))
     setZoom(newZoom)
-    pushHistory({ crop, zoom: newZoom, rotation, bgColor })
+    pushHistory({ crop, zoom: newZoom, rotation, bgColor, fade })
   }
 
   function center() {
     const c = { x: 0, y: 0 }
     setCrop(c)
-    pushHistory({ crop: c, zoom, rotation, bgColor })
+    pushHistory({ crop: c, zoom, rotation, bgColor, fade })
   }
 
   function fillToBleed() {
@@ -181,7 +182,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
       const dropper = new window.EyeDropper()
       const result = await dropper.open()
       setBgColor(result.sRGBHex)
-      pushHistory({ crop, zoom, rotation, bgColor: result.sRGBHex })
+      pushHistory({ crop, zoom, rotation, bgColor: result.sRGBHex, fade })
     } catch {
       // user cancelled
     }
@@ -215,7 +216,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
         }}
         onKeyUp={(e) => {
           if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
-          pushHistory({ crop: cropRef.current, zoom, rotation, bgColor })
+          pushHistory({ crop: cropRef.current, zoom, rotation, bgColor, fade })
         }}
       >
         <Cropper
@@ -248,10 +249,13 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
               </div>
             )}
             <div className="guide guide--bleed" style={{ width: '100%', height: '100%' }} />
-            <div className="guide guide--trim" style={{ width: trimW, height: trimH }} />
+            <div className="guide guide--trim" style={{ width: trimW, height: trimH }} title="Trim line — your card will be cut here" />
             <div className="guide guide--safe" style={{ width: safeW, height: safeH }} />
           </div>
         </div>
+        {fade > 0 && (
+          <div className="crop-fade-overlay" style={{ opacity: fade / 100 }} aria-hidden />
+        )}
       </div>
 
       {isViewportFocused && (
@@ -272,7 +276,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
               onChange={(e) => setRotation(((+e.target.value) % 360 + 360) % 360)}
               onPointerUp={(e) => {
                 const r = (((+e.currentTarget.value) % 360) + 360) % 360
-                pushHistory({ crop, zoom, rotation: r, bgColor })
+                pushHistory({ crop, zoom, rotation: r, bgColor, fade })
               }}
               className="ctrl-slider"
             />
@@ -293,7 +297,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
               step={0.01}
               value={zoom}
               onChange={(e) => setZoom(+e.target.value)}
-              onPointerUp={(e) => pushHistory({ crop, zoom: +e.currentTarget.value, rotation, bgColor })}
+              onPointerUp={(e) => pushHistory({ crop, zoom: +e.currentTarget.value, rotation, bgColor, fade })}
               className="ctrl-slider"
             />
             <button className="ctrl-btn" onClick={() => stepZoom(0.1)} disabled={zoom >= MAX_ZOOM}>+</button>
@@ -311,7 +315,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
                 type="color"
                 value={bgColor}
                 onChange={(e) => setBgColor(e.target.value)}
-                onBlur={(e) => pushHistory({ crop, zoom, rotation, bgColor: e.target.value })}
+                onBlur={(e) => pushHistory({ crop, zoom, rotation, bgColor: e.target.value, fade })}
                 className="ctrl-swatch__input"
                 title="Choose background color"
               />
@@ -324,6 +328,24 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
               </button>
             )}
             <span className="ctrl-value" style={{ fontSize: '11px', letterSpacing: '0.02em' }}>{bgColor}</span>
+          </div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label" htmlFor="crop-fade">Fade</label>
+          <div className="control-row">
+            <input
+              id="crop-fade"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={fade}
+              onChange={(e) => setFade(+e.target.value)}
+              onPointerUp={(e) => pushHistory({ crop, zoom, rotation, bgColor, fade: +e.currentTarget.value })}
+              className="ctrl-slider"
+            />
+            <span className="ctrl-value">{fade}%</span>
           </div>
         </div>
 
