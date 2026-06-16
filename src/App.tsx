@@ -427,9 +427,7 @@ function App() {
           </div>
           <span className="app-header__tagline">a K-pop photocard maker</span>
         </div>
-        {total > 0 && (
-          <span className="app-header__count" aria-live="polite" aria-atomic="true">{total} / {DECK_MAX_CARDS} cards</span>
-        )}
+        <span className="app-header__count" aria-live="polite" aria-atomic="true">{total} / {DECK_MAX_CARDS} cards</span>
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
 
@@ -476,18 +474,7 @@ function App() {
 
         {deck.cards.length > 0 && (
           <div className="deck-bar">
-            {total < DECK_MAX_CARDS && (
-              <label className="deck-bar__add">
-                + Add image
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
-                  hidden
-                />
-              </label>
-            )}
-            <div className="deck-bar__right">
+            <div className="deck-bar__toggle-row">
               <div className="paper-size-toggle">
                 <button
                   className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
@@ -502,10 +489,25 @@ function App() {
                   A4
                 </button>
               </div>
-              <button className="btn btn--primary" onClick={handleExport} disabled={exporting}>
-                {exporting ? 'Generating…' : 'Download PDF'}
-              </button>
-              {exportError && <p className="deck-bar__error">{exportError}</p>}
+            </div>
+            <div className="deck-bar__actions">
+              {total < DECK_MAX_CARDS && (
+                <label className="deck-bar__add">
+                  + Add image
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
+                    hidden
+                  />
+                </label>
+              )}
+              <div className="deck-bar__right">
+                <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
+                  {exporting ? 'Generating…' : 'Download PDF'}
+                </button>
+                {exportError && <p className="deck-bar__error">{exportError}</p>}
+              </div>
             </div>
           </div>
         )}
