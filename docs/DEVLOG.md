@@ -48,6 +48,126 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-17 — Photo paper print layouts and multi-deck (MAT-394–401)
+
+The letter/A4 flow was always a batch job: 9 cards, one sheet, send to printer. The next category of user is someone with a photo paper printer — an Epson ET-8550 or similar — who wants to print one or two cards at a time on 4×6 or 5×7 stock. The constraints are completely different: smaller sheet, no 9-up grid, manual rear-feeder duplex, tight registration requirements. Seven tickets.
+
+### MAT-394 — Data model: multi-deck and preset
+
+The biggest structural change. Previously the app held a single `Deck` (cards + copies) with `letter` or `a4` as the only paper distinction. Now the top-level model is a `Project`:
+
+```ts
+interface Project {
+  preset: PrintPreset
+  decks: Deck[]
+}
+```
+
+`PrintPreset` encodes everything a sheet needs: `sheetMm`, `cols`, `rows`, `orientation`, `bleedMm`, `nUp`. Six presets ship:
+
+| ID | Label | Sheet | Grid | Bleed | N-up |
+|----|-------|-------|------|-------|------|
+| `letter` | US Letter | 215.9×279.4 mm | 3×3 | 2 mm | 9 |
+| `a4` | A4 | 210×297 mm | 3×3 | 2 mm | 9 |
+| `4x6-2up` | 4×6 — 2-up | 101.6×152.4 mm | 1×2 | 3 mm | 2 |
+| `5x7-2up` | 5×7 — 2-up | 127×177.8 mm | 1×2 | 3 mm | 2 |
+| `5x7-3up` | 5×7 — 3-up | 127×177.8 mm | 1×3 | 1.5 mm | 3 |
+| `5x7-4up` | 5×7 — 4-up | 127×177.8 mm | 2×2 | 1.5 mm | 4 |
+
+The photo paper presets use single-column layouts (cols=1, rows=N) because a 4×6 sheet is 101.6 mm wide — placing two 85 mm landscape cards side by side would require 176 mm. Verified by the geometry engine.
+
+`useDeck.ts` is replaced by `useProject.ts`. Storage key changes from `photocard-deck` to `photocard-project`; migration is transparent on first load. The `SET_PRESET` action auto-splits cards across new decks when switching to a smaller preset: if a user had 9 cards on letter and switches to 4×6 2-up, they end up with 5 decks of 2/2/2/2/1.
+
+### MAT-395 — Geometry engine
+
+`src/utils/printLayout.ts` exports two functions.
+
+`layout(preset)` computes every number needed to position cards on the sheet in mm coordinates (y-down, origin top-left):
+
+```ts
+cardW = orientation === 'landscape' ? 85 : 55
+gutter = 2 * bleedMm
+contentW = cols * cardW + (cols - 1) * gutter
+marginX = (sheetMm.w - contentW) / 2
+valid = marginX >= bleedMm && marginY >= bleedMm
+```
+
+`valid` is the key safety gate: a layout that produces margins smaller than the bleed would clip the bleed zone against the sheet edge. All six presets pass. The 5×7 4-up is the tightest — 0.75 mm of margin beyond bleed on each side — which is why it gets a "near-perfect registration required" warning in the UI.
+
+`maxBleed(preset)` returns the theoretical maximum safe bleed for a given sheet and grid, for future use if we ever expose a bleed slider.
+
+Unit tests (`tests/printLayout.spec.ts`) run under Node 24's built-in `node:test` + `node:assert/strict` — Playwright's browser automation package is installed but not `@playwright/test`. All 5 assertions pass.
+
+### MAT-396 — Crop re-render at target bleed
+
+Photo paper presets use 1.5 mm or 3 mm bleed vs. the letter default of 2 mm. Rather than maintaining two separate crop pipelines, `getCroppedDataUrl` gained an optional `bleedMm` parameter:
+
+```ts
+const outW = bleedMm === 2
+  ? CARD_BLEED.widthPx
+  : Math.round((55 + 2 * bleedMm) * (300 / 25.4))
+```
+
+When `bleedMm === 2`, the existing cached pixel dimensions are used directly. Any other value recomputes. The CropEditor call site is unchanged — photo paper crops re-render automatically at the correct bleed size when their deck's preset is applied.
+
+In practice, existing card images (cropped at 2 mm bleed) can be drawn into photo paper PDF slots via overscan — the image is scaled ~3% larger to fill the bleed box — so no re-render is needed for the export path. The re-render pipeline is there for perfect fidelity if a user re-crops after switching presets.
+
+### MAT-397 — Photo paper PDF builder
+
+`buildPrintPdf(preset, deck)` in `src/utils/printPdf.ts` produces a 2-page PDF:
+
+- **Page 1** — fronts at their bleed-box positions
+- **Page 2** — backs, x-mirrored for long-edge duplex: `backSlot.x = sheetMm.w − slot.x − slot.w`
+
+The duplex mirror means that when the sheet is flipped on its long edge (the way every home duplex printer works), the backs land on top of the fronts correctly.
+
+Crop marks are hairline ticks: 0.25 pt stroke, 3 mm length, starting 1 mm away from the trim corner and pointing outward into the gutter. Eight ticks per card (two per corner). They're drawn on both pages.
+
+Image placement uses overscan: existing card PNGs (cropped at 2 mm bleed) are drawn at the bleed-box dimensions `(slot.w + 2*b) × (slot.h + 2*b)` rather than at trim size. This scales the image by at most `~3%` — invisible in print — and means no re-render is needed at export time.
+
+The ET-8550 guidance is a `<details>` collapsible in the UI: rear straight pass, borderless mode, correct media type, extra dry time before laminating.
+
+### MAT-398 — Preset picker polish
+
+Three UX fixes for the photo paper flow:
+
+**Copies hidden.** The `−/+` copy stepper on each `DeckCard` is hidden when `isPhotoPaper` (`hideCopies` prop). When you only have 2 slots, "2 copies of card A" is incoherent — you just add two cards.
+
+**"Sheet is full."** The deck-full message now reads "Sheet is full." for photo paper presets instead of "Deck is full — remove a card or reduce copies to add more."
+
+**Split toast deduped.** The "Cards split across N sheets" toast only fires when a preset switch causes the split — not when the user manually clicks "+ Add sheet". Implemented with a `justSwitchedPreset` ref that is set in the `setPreset` click handler and checked in the `useEffect` that watches `project.decks.length`.
+
+### MAT-399 — Multi-deck UI
+
+The deck view was a flat list of cards targeting a hardcoded `ACTIVE_DECK = 0`. Now `project.decks` is mapped into labeled sections:
+
+- **"SHEET N" header** — visible when more than one deck exists; includes a "Remove ×" button
+- **Card grid** — the existing `DeckCard` grid for that deck's cards
+- **"+ Add image"** — a dashed-border label per deck section, targeting that deck index
+- **"Sheet is full."** — per-deck when `deckTotal(deck) >= nUp`
+- **"Move →" controls** — each card gets a move trigger that expands to "Move to: Sheet N" buttons when multiple decks exist (photo paper only)
+- **"+ Add sheet" button** — at the bottom, photo paper only
+- **"Download sheet N" buttons** — one per populated deck; "Download all sheets" when 2+ decks have cards
+
+The header count switches from "N / nUp cards" (single deck) to "N cards · M sheets" (multi-deck).
+
+All step types now carry `targetDeck` (for new-card flows) or `deckIndex` (for edit flows), threading the correct deck index through every crop confirmation, back-scope dialog, and URL revocation path. `handleGoHome` uses `resetProject()` which clears all decks rather than just deck 0.
+
+### MAT-401 — Live sheet preview
+
+`SheetPreview` is a pure SVG component that renders in the section header of every deck, showing what the printed sheet will look like:
+
+- Sheet background (white) with a subtle grey wash on the waste/margin area
+- Content boundary marked with a dashed border
+- Bleed zone per slot in a faint pink tint
+- Card thumbnails (card front `data:` URLs) clipped inside nested `<svg overflow="hidden">` elements
+- Warm beige placeholder for unfilled slots
+- Crop mark ticks at all 4 × 2 = 8 corner edges (0.22 pt hairlines, 1.8 mm)
+
+The component takes `preset` and `thumbnails[]` props, calls `layout()` internally, and scales the entire sheet to a 130 px wide SVG via `viewBox`. It updates reactively — switching presets re-renders the layout immediately; adding cards fills in the thumbnails.
+
+---
+
 ## 2026-06-17 — Mobile color picker fallback + backlog audit (MAT-314)
 
 **MAT-314 — Editable hex input for background color.** On iOS Safari and some Android browsers, `<input type="color">` either fails silently or doesn't open reliably. The hex value next to the swatch was a read-only `<span>` — useless on mobile. Replaced it with a styled text input (`.ctrl-hex-input`) that looks identical to the span at rest but becomes an editable field on tap or click. A separate `hexDraft` state tracks in-progress typing so `bgColor` stays valid at all times — partial values like `#ff` don't corrupt the viewport background or the export. On blur, a valid 6-digit hex applies and pushes to undo history; invalid input reverts to the last good color. The color picker swatch still works normally on desktop.
