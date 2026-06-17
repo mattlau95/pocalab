@@ -6,6 +6,7 @@ import { useBeforeUnload } from './hooks/useBeforeUnload'
 import { ImageUpload } from './components/ImageUpload'
 import { CropEditor } from './components/CropEditor'
 import { DeckCard } from './components/DeckCard'
+import { SheetPreview } from './components/SheetPreview'
 import { createCard } from './models/card'
 import type { Card, CropState } from './models/card'
 import type { Deck } from './models/deck'
@@ -534,17 +535,25 @@ function App() {
           const isFull = dTotal >= nUp
           return (
             <div key={di} className="deck-section">
-              {project.decks.length > 1 && (
-                <div className="deck-section__header">
-                  <span className="deck-section__label">Sheet {di + 1}</span>
-                  <button
-                    className="deck-section__remove"
-                    onClick={() => handleRemoveDeck(di)}
-                  >
-                    Remove ×
-                  </button>
+              <div className="deck-section__header">
+                <span className="deck-section__label">
+                  {project.decks.length > 1 ? `Sheet ${di + 1}` : project.preset.label}
+                </span>
+                <div className="deck-section__header-right">
+                  <SheetPreview
+                    preset={project.preset}
+                    thumbnails={deck.cards.map(c => c.front)}
+                  />
+                  {project.decks.length > 1 && (
+                    <button
+                      className="deck-section__remove"
+                      onClick={() => handleRemoveDeck(di)}
+                    >
+                      Remove ×
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
 
               {deck.cards.length > 0 && (
                 <div className="deck-grid">
