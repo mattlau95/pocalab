@@ -61,12 +61,12 @@
 }
 
 .deck-card__thumb {
-  width: 60px;
-  height: 90px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2/3;
   border-radius: 4px;
   background: var(--surface);
   overflow: hidden;
-  flex-shrink: 0;
 }
 
 .deck-card__thumb img {
@@ -179,14 +179,6 @@
 }
 
 @media (pointer: coarse) {
-  /* Thumbs scale proportionally with column width */
-  .deck-card__thumb {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 2/3;
-    flex-shrink: 1;
-  }
-
   /* Stack Edit + DL vertically so they fill the column without overflowing */
   .deck-card__side-actions {
     flex-direction: column;

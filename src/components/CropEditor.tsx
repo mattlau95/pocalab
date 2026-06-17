@@ -27,13 +27,15 @@ interface Props {
   initialState?: CropState
   onConfirm: (dataUrl: string, state: CropState) => void
   onCancel: () => void
+  onReplace?: (file: File) => void
 }
 
-export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel }: Props) {
+export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel, onReplace }: Props) {
   const [crop, setCrop] = useState(initialState?.crop ?? { x: 0, y: 0 })
   const [zoom, setZoom] = useState(initialState?.zoom ?? 1)
   const [rotation, setRotation] = useState(initialState?.rotation ?? 0)
   const [bgColor, setBgColor] = useState(initialState?.bgColor ?? DEFAULT_BG)
+  const [hexDraft, setHexDraft] = useState(initialState?.bgColor ?? DEFAULT_BG)
   const [fade, setFade] = useState(initialState?.fade ?? 0)
   const [showGrid, setShowGrid] = useState(false)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
@@ -89,6 +91,9 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
       setCrop({ x: 0, y: 0 })
     }
   }, [imgSize, renderedMedia, cropSize])
+
+  // Keep hex text input in sync when bgColor changes externally (color picker, eyedropper, undo/redo)
+  useEffect(() => { setHexDraft(bgColor) }, [bgColor])
 
   // Undo / redo — stored in refs so handlers always see current values
   const historyRef = useRef<Snapshot[]>([
@@ -327,13 +332,27 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
                 </svg>
               </button>
             )}
-            <span className="ctrl-value" style={{ fontSize: '11px', letterSpacing: '0.02em' }}>{bgColor}</span>
-          </div>
-        </div>
-
-        <div className="control-group">
-          <label className="control-label" htmlFor="crop-fade">Fade</label>
-          <div className="control-row">
+            <input
+              type="text"
+              value={hexDraft}
+              onChange={(e) => {
+                const v = e.target.value
+                setHexDraft(v)
+                if (/^#[0-9a-fA-F]{6}$/.test(v)) setBgColor(v)
+              }}
+              onBlur={() => {
+                if (/^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                  setBgColor(hexDraft)
+                  pushHistory({ crop, zoom, rotation, bgColor: hexDraft, fade })
+                } else {
+                  setHexDraft(bgColor)
+                }
+              }}
+              className="ctrl-hex-input"
+              maxLength={7}
+              spellCheck={false}
+              aria-label="Background color hex value"
+            />
             <input
               id="crop-fade"
               type="range"
@@ -394,6 +413,17 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel 
       )}
 
       <div className="crop-actions">
+        {onReplace && (
+          <label className="btn btn--ghost" style={{ cursor: 'pointer', marginRight: 'auto' }}>
+            Replace image
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { onReplace(f); e.target.value = '' } }}
+              hidden
+            />
+          </label>
+        )}
         <button className="btn btn--ghost" onClick={onCancel}>Cancel</button>
         <button className="btn btn--primary" onClick={handleConfirm} disabled={!croppedAreaPixels || exporting}>
           {exporting ? 'Exporting…' : 'Confirm crop'}

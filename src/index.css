@@ -70,7 +70,7 @@ html {
 
 @media (pointer: coarse) {
   html {
-    scroll-padding-bottom: 110px;
+    scroll-padding-bottom: 70px;
   }
 }
 

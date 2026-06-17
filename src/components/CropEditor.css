@@ -226,6 +226,33 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ctrl-hex-input {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--foreground-muted);
+  font-variant-numeric: tabular-nums;
+  width: 56px;
+  flex-shrink: 0;
+  text-align: right;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: inherit;
+  padding: 1px 3px;
+  cursor: text;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ctrl-hex-input:hover {
+  border-color: var(--border);
+}
+
+.ctrl-hex-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
 /* MAT-220 / MAT-221 / MAT-223: pill buttons for Center, Undo, Redo, Grid */
 .ctrl-pills {
   display: flex;

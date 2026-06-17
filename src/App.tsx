@@ -14,6 +14,13 @@ import type { Deck } from './models/deck'
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
 const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
 
+const eu = encodeURIComponent
+const EXAMPLE_BACKS = [
+  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><rect width="295" height="445" fill="#0c0818"/><rect x="16" y="16" width="263" height="413" rx="4" fill="none" stroke="#281a46" stroke-width="1.5"/><circle cx="58" cy="88" r="1.5" fill="#3b1f6e"/><circle cx="210" cy="132" r="1" fill="#3b1f6e"/><circle cx="242" cy="68" r="2" fill="#3b1f6e"/><circle cx="110" cy="220" r="1.5" fill="#3b1f6e"/><circle cx="192" cy="312" r="1" fill="#3b1f6e"/><circle cx="48" cy="388" r="2" fill="#3b1f6e"/><circle cx="258" cy="372" r="1.5" fill="#3b1f6e"/></svg>')}`,
+  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ee4897"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><rect width="295" height="445" fill="url(#g)"/><rect x="16" y="16" width="263" height="413" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5"/></svg>')}`,
+  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><rect width="295" height="445" fill="#fffbf7"/><rect x="12" y="12" width="271" height="421" rx="6" fill="none" stroke="#f0dcca" stroke-width="2.5"/><rect x="20" y="20" width="255" height="405" rx="4" fill="none" stroke="#f0dcca" stroke-width="1"/></svg>')}`,
+]
+
 function AppHeader({ onHome }: { onHome?: () => void }) {
   return (
     <header className="app-header">
@@ -283,6 +290,9 @@ function App() {
   }
 
   if (step.id === 'upload-back') {
+    const knownBacks = [...new Set(
+      deck.cards.map(c => c.back).filter((b): b is string => b !== null)
+    )]
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
@@ -313,29 +323,41 @@ function App() {
             <div className="upload-back__content">
               <p className="upload-back__step">Step 2 of 2 — Add the card back</p>
 
-              {(() => {
-                const knownBacks = [...new Set(
-                  deck.cards.map(c => c.back).filter((b): b is string => b !== null)
-                )]
-                return knownBacks.length > 0 ? (
-                  <>
-                    <p className="upload-back__step" style={{ marginBottom: -4 }}>Previously used backs</p>
-                    <div className="back-gallery">
-                      {knownBacks.map((dataUrl, i) => (
-                        <button
-                          key={i}
-                          className="back-gallery__thumb"
-                          onClick={() => handleUseExistingBack(dataUrl)}
-                          title="Use this back"
-                        >
-                          <img src={dataUrl} alt={`Back option ${i + 1}`} />
-                        </button>
-                      ))}
-                    </div>
-                    <div className="upload-back__divider">or upload different</div>
-                  </>
-                ) : null
-              })()}
+              {knownBacks.length > 0 && (
+                <>
+                  <p className="upload-back__step" style={{ marginBottom: -4 }}>Previously used</p>
+                  <div className="back-gallery">
+                    {knownBacks.map((dataUrl, i) => (
+                      <button
+                        key={i}
+                        className="back-gallery__thumb"
+                        onClick={() => handleUseExistingBack(dataUrl)}
+                        title="Use this back"
+                      >
+                        <img src={dataUrl} alt={`Back option ${i + 1}`} />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <p className="upload-back__step" style={{ marginBottom: -4 }}>Examples</p>
+              <div className="back-gallery">
+                {EXAMPLE_BACKS.map((src, i) => (
+                  <button
+                    key={`eg-${i}`}
+                    className="back-gallery__thumb"
+                    onClick={() => handleUseExistingBack(src)}
+                    title="Use this example back"
+                  >
+                    <img src={src} alt={`Example back ${i + 1}`} />
+                  </button>
+                ))}
+              </div>
+
+              <div className="upload-back__divider">
+                {knownBacks.length > 0 ? 'or upload different' : 'or upload your own'}
+              </div>
 
               <ImageUpload onFile={handleBackFile} />
 
@@ -375,16 +397,25 @@ function App() {
   }
 
   if (step.id === 'edit-side') {
+    const editStep = step
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
         <main className="app-main">
           <CropEditor
-            imageSrc={step.imageSrc}
-            label={`Edit ${step.side}`}
-            initialState={step.initialState}
+            imageSrc={editStep.imageSrc}
+            label={`Edit ${editStep.side}`}
+            initialState={editStep.initialState}
             onConfirm={handleEditConfirm}
             onCancel={handleCancel}
+            onReplace={(file) => {
+              const card = deck.cards.find(c => c.id === editStep.cardId)
+              const storedSrc = editStep.side === 'front' ? card?.frontSrc : card?.backSrc
+              if (editStep.imageSrc !== storedSrc && editStep.imageSrc.startsWith('blob:')) {
+                URL.revokeObjectURL(editStep.imageSrc)
+              }
+              setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId: editStep.cardId, side: editStep.side })
+            }}
           />
         </main>
       </div>
@@ -474,41 +505,35 @@ function App() {
 
         {deck.cards.length > 0 && (
           <div className="deck-bar">
-            <div className="deck-bar__toggle-row">
-              <div className="paper-size-toggle">
-                <button
-                  className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
-                  onClick={() => setPaperSize('letter')}
-                >
-                  US Letter
-                </button>
-                <button
-                  className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
-                  onClick={() => setPaperSize('a4')}
-                >
-                  A4
-                </button>
-              </div>
+            {exportError && <p className="deck-bar__error">{exportError}</p>}
+            <div className="paper-size-toggle">
+              <button
+                className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
+                onClick={() => setPaperSize('letter')}
+              >
+                US Letter
+              </button>
+              <button
+                className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
+                onClick={() => setPaperSize('a4')}
+              >
+                A4
+              </button>
             </div>
-            <div className="deck-bar__actions">
-              {total < DECK_MAX_CARDS && (
-                <label className="deck-bar__add">
-                  + Add image
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
-                    hidden
-                  />
-                </label>
-              )}
-              <div className="deck-bar__right">
-                <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
-                  {exporting ? 'Generating…' : 'Download PDF'}
-                </button>
-                {exportError && <p className="deck-bar__error">{exportError}</p>}
-              </div>
-            </div>
+            {total < DECK_MAX_CARDS && (
+              <label className="deck-bar__add">
+                + Add image
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
+                  hidden
+                />
+              </label>
+            )}
+            <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Generating…' : 'Download PDF'}
+            </button>
           </div>
         )}
 
@@ -524,6 +549,9 @@ function App() {
 
         {total < DECK_MAX_CARDS && (
           <div className={deck.cards.length > 0 ? 'deck-upload' : undefined}>
+            {deck.cards.length === 0 && (
+              <p className="deck-intro">Build a deck of up to 9 photocards — then export as a print-ready PDF.</p>
+            )}
             <ImageUpload onFile={handleFrontFile} />
           </div>
         )}

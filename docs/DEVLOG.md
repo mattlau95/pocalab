@@ -48,6 +48,42 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-17 — Quick-win batch: UX polish across editor, deck, and onboarding (MAT-367, MAT-376, MAT-384–387)
+
+Seven quick-win issues shipped in one session.
+
+**MAT-385 — DeckCard proportional thumbnails.** The deck-card thumbnails were a fixed 60×90 px on desktop, leaving the card container looking loose when the grid stretched. Changed `.deck-card__thumb` to `width: 100%; aspect-ratio: 2/3` so thumbnails always fill the column width. The mobile override was the same value and is now the shared default.
+
+**MAT-386 — Fade slider merged into Background row.** The crop editor previously had a separate "Fade" control row below "Background". The fade `<input type="range">` was moved inline after the hex value in the Background row: [swatch] [dropper?] [#hex] [fade slider] [fade%]. One fewer row in a UI that was already tall on small screens.
+
+**MAT-387 — Replace image from inside the crop editor.** Added an `onReplace?: (file: File) => void` prop to `CropEditor`. When provided, a "Replace image" label-button (hidden file input) appears left-aligned in the crop-actions bar, with Cancel and Confirm pushed right via `marginRight: auto`. Wired to the `edit-side` step in App.tsx — handles blob URL revocation before switching to the new file.
+
+**MAT-367 — Deck-of-9 onboarding hint.** In-person testing showed a new user assumed the tool made a single card. A one-line hint was added above the upload zone on the idle (empty deck) screen: "Build a deck of up to 9 photocards — then export as a print-ready PDF."
+
+**MAT-376 — Example back designs in the editor.** New users reaching the "Add the card back" step had no visual inspiration. Three SVG example backs are now seeded as an always-visible gallery section ("Examples"): a dark minimal card with a subtle dot pattern, a pink-to-purple gradient with a white inset border, and a cream card with a double border frame. Clicking one immediately applies it via `handleUseExistingBack`.
+
+**MAT-384 — Crop guides vs header z-index.** Verified resolved by the header z-index bump from MAT-388 (header: 20, guides: 10, guides also clipped by `overflow: hidden` on the viewport). No code change needed.
+
+**MAT-366 — Mobile sticky bar overlap.** Verified resolved by MAT-388's single-row deck bar redesign (~130 px → ~64 px). No code change needed.
+
+## 2026-06-17 — Mobile header and deck bar overhaul (MAT-388, MAT-389)
+
+Two interconnected mobile layout bugs were fixed in the same pass.
+
+### Sticky header replaced with fixed on mobile (MAT-389)
+
+The app header used `position: sticky` everywhere. On iOS Safari, `position: sticky` inside a flex container is unreliable during momentum scrolling — the header can scroll away with the content and not re-attach until the scroll velocity dies. The fix is straightforward: on `@media (pointer: coarse)`, override to `position: fixed; left: 0; right: 0`. Since `fixed` removes the header from document flow, `.app-main` gets a compensating `padding-top: 90px` (66px header height + 24px original padding) on the same breakpoint. Desktop keeps `position: sticky` unchanged. The z-index was also bumped from 10 → 20 across all viewports to ensure the header stacks above the fixed deck bar.
+
+### Deck bar collapsed to single row (MAT-388)
+
+The previous mobile deck bar used two rows: a centered paper-size toggle row on top, then an actions row with a large "Add image" label and a narrower "Download PDF" column. This made the bar roughly 130px tall, wasted vertical screen real estate, and looked disjointed. The new layout is a single `flex-direction: row` bar: `[US Letter | A4] · [+ Add image (flex: 1)] · [Download PDF]`. Bar height drops to ~64px.
+
+The wrapper divs (`deck-bar__toggle-row`, `deck-bar__actions`, `deck-bar__right`) were removed from both the JSX and CSS. The error message, previously inside the right column, is now a flex item with `flex-basis: 100%; order: -1` — it becomes a full-width row above the controls when present, growing the bar upward rather than shifting the layout sideways.
+
+The toast (`position: fixed; z-index: 30`) was also repositioned on mobile to `bottom: calc(80px + env(safe-area-inset-bottom))` so it clears the bar. The `app-main--with-bar` bottom padding and `scroll-padding-bottom` on `html` were updated to match the new bar height (from 110px → 70px).
+
+---
+
 ## 2026-06-14 — Edit back scope dialog
 
 When a second (or third, etc.) card reuses the same back from the gallery, clicking "Edit back" would now open a new file picker — because `backSrc` is only stored for cards that went through the full crop flow, not for gallery-reuse cards. More importantly, if you did edit the back and save, the other cards sharing that image would be silently left with the old version, with no way to propagate the change except editing each card individually.
