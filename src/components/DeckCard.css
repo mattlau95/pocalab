@@ -248,3 +248,60 @@
     font-size: 15px;
   }
 }
+
+.deck-card__move {
+  display: flex;
+  justify-content: center;
+}
+
+.deck-card__move-trigger {
+  font-size: 11px;
+  color: var(--foreground-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.1s;
+}
+
+.deck-card__move-trigger:hover {
+  color: var(--primary);
+}
+
+.deck-card__move-options {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.deck-card__move-label {
+  font-size: 11px;
+  color: var(--foreground-muted);
+}
+
+.deck-card__move-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.deck-card__move-btn:hover {
+  opacity: 0.85;
+}
+
+.deck-card__move-cancel {
+  font-size: 11px;
+  color: var(--foreground-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+}

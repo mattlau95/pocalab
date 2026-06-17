@@ -1,6 +1,5 @@
 import type { Card } from './card'
-
-export const DECK_MAX_CARDS = 9
+import { type PrintPreset, DEFAULT_PRESET } from './preset'
 
 export interface Deck {
   cards: Card[]
@@ -10,4 +9,13 @@ export interface Deck {
 
 export function createDeck(): Deck {
   return { cards: [], copies: {}, sharedBack: null }
+}
+
+export interface Project {
+  preset: PrintPreset
+  decks: Deck[]
+}
+
+export function createProject(preset: PrintPreset = DEFAULT_PRESET): Project {
+  return { preset, decks: [createDeck()] }
 }

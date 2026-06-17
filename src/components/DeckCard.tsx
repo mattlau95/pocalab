@@ -12,13 +12,18 @@ interface Props {
   onRemove: () => void
   onEditSide: (side: 'front' | 'back', file: File) => void
   onReEditSide: (side: 'front' | 'back') => void
+  hideCopies?: boolean
+  onMoveTo?: (toDeckIndex: number) => void
+  deckCount?: number
+  deckIndex?: number
 }
 
-export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, onEditSide, onReEditSide }: Props) {
+export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, onEditSide, onReEditSide, hideCopies, onMoveTo, deckCount = 1, deckIndex = 0 }: Props) {
   const frontInputRef = useRef<HTMLInputElement>(null)
   const backInputRef = useRef<HTMLInputElement>(null)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const [showMove, setShowMove] = useState(false)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') {
     const file = e.target.files?.[0]
@@ -126,23 +131,49 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
         </div>
       </div>
 
-      <div className="deck-card__copies">
-        <button
-          className="copies-btn"
-          onClick={() => onCopiesChange(copies - 1)}
-          disabled={copies <= 1}
-        >
-          −
-        </button>
-        <span className="copies-count">{copies}</span>
-        <button
-          className="copies-btn"
-          onClick={() => onCopiesChange(copies + 1)}
-          disabled={copies >= maxCopies}
-        >
-          +
-        </button>
-      </div>
+      {!hideCopies && (
+        <div className="deck-card__copies">
+          <button
+            className="copies-btn"
+            onClick={() => onCopiesChange(copies - 1)}
+            disabled={copies <= 1}
+          >
+            −
+          </button>
+          <span className="copies-count">{copies}</span>
+          <button
+            className="copies-btn"
+            onClick={() => onCopiesChange(copies + 1)}
+            disabled={copies >= maxCopies}
+          >
+            +
+          </button>
+        </div>
+      )}
+
+      {onMoveTo && deckCount > 1 && (
+        <div className="deck-card__move">
+          {showMove ? (
+            <div className="deck-card__move-options">
+              <span className="deck-card__move-label">Move to:</span>
+              {Array.from({ length: deckCount }, (_, i) => i).filter(i => i !== deckIndex).map(i => (
+                <button
+                  key={i}
+                  className="deck-card__move-btn"
+                  onClick={() => { onMoveTo(i); setShowMove(false) }}
+                >
+                  Sheet {i + 1}
+                </button>
+              ))}
+              <button className="deck-card__move-cancel" onClick={() => setShowMove(false)}>✕</button>
+            </div>
+          ) : (
+            <button className="deck-card__move-trigger" onClick={() => setShowMove(true)}>
+              Move →
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

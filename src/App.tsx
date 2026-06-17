@@ -1,13 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
-import { useDeck } from './hooks/useDeck'
+import { useProject, deckTotal } from './hooks/useProject'
+import { PRESETS } from './models/preset'
 import { useBeforeUnload } from './hooks/useBeforeUnload'
 import { ImageUpload } from './components/ImageUpload'
 import { CropEditor } from './components/CropEditor'
 import { DeckCard } from './components/DeckCard'
 import { createCard } from './models/card'
-import { DECK_MAX_CARDS } from './models/deck'
-import type { PaperSize } from './utils/pdf'
 import type { Card, CropState } from './models/card'
 import type { Deck } from './models/deck'
 
@@ -50,35 +49,96 @@ function expandDeck(deck: Deck) {
 
 type Step =
   | { id: 'idle' }
-  | { id: 'crop-front'; imageSrc: string; editingPending?: Card; initialState?: CropState }
-  | { id: 'upload-back'; pendingCard: Card; pendingBackSrc?: string }
-  | { id: 'crop-back'; imageSrc: string; pendingCard: Card; setAsShared: boolean }
-  | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back'; initialState?: CropState }
-  | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[] }
+  | { id: 'crop-front'; imageSrc: string; editingPending?: Card; initialState?: CropState; targetDeck: number }
+  | { id: 'upload-back'; pendingCard: Card; pendingBackSrc?: string; targetDeck: number }
+  | { id: 'crop-back'; imageSrc: string; pendingCard: Card; setAsShared: boolean; targetDeck: number }
+  | { id: 'edit-side'; imageSrc: string; cardId: string; side: 'front' | 'back'; initialState?: CropState; deckIndex: number }
+  | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[]; deckIndex: number }
 
 function App() {
-  const { deck, total, addCard, removeCard, setCopies, updateCard, setSharedBack, clearDeck } = useDeck()
+  const { project, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
+  const nUp = project.preset.nUp
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
-  const [paperSize, setPaperSize] = useState<PaperSize>('letter')
   const [cardAdded, setCardAdded] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
-  useBeforeUnload(deck.cards.length > 0 || step.id !== 'idle')
+  const [splitToast, setSplitToast] = useState<string | null>(null)
+  const prevDeckCount = useRef(project.decks.length)
+  const justSwitchedPreset = useRef(false)
 
-  async function handleExport() {
+  const anyCards = project.decks.some(d => d.cards.length > 0)
+  const totalCards = project.decks.reduce((sum, d) => sum + d.cards.length, 0)
+  const isPhotoPaper = !['letter', 'a4'].includes(project.preset.id)
+
+  useBeforeUnload(anyCards || step.id !== 'idle')
+
+  useEffect(() => {
+    if (justSwitchedPreset.current && project.decks.length > prevDeckCount.current && project.decks.length > 1) {
+      setSplitToast(`Cards split across ${project.decks.length} sheets`)
+      const t = setTimeout(() => setSplitToast(null), 3000)
+      prevDeckCount.current = project.decks.length
+      justSwitchedPreset.current = false
+      return () => clearTimeout(t)
+    }
+    justSwitchedPreset.current = false
+    prevDeckCount.current = project.decks.length
+  }, [project.decks.length])
+
+  function firstAvailableDeck() {
+    return Math.max(0, project.decks.findIndex(d => deckTotal(d) < nUp))
+  }
+
+  function triggerDownload(bytes: Uint8Array, filename: string) {
+    const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleExport(deckIndex = 0) {
     setExporting(true)
     setExportError(null)
     try {
-      const { createPhotocardPdf } = await import('./utils/pdf')
-      const bytes = await createPhotocardPdf(expandDeck(deck), paperSize)
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'photocards.pdf'
-      a.click()
-      URL.revokeObjectURL(url)
+      const deck = project.decks[deckIndex]
+      if (!deck) return
+      if (isPhotoPaper) {
+        const { buildPrintPdf } = await import('./utils/printPdf')
+        const bytes = await buildPrintPdf(project.preset, deck)
+        triggerDownload(bytes, project.decks.length > 1 ? `sheet-${deckIndex + 1}.pdf` : 'sheet-1.pdf')
+      } else {
+        const { createPhotocardPdf } = await import('./utils/pdf')
+        const paperSize = (project.preset.id === 'a4' ? 'a4' : 'letter') as 'letter' | 'a4'
+        const bytes = await createPhotocardPdf(expandDeck(deck), paperSize)
+        triggerDownload(bytes, 'photocards.pdf')
+      }
+      setShowFeedbackPrompt(true)
+    } catch {
+      setExportError('PDF generation failed — please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleExportAll() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const { buildPrintPdf } = await import('./utils/printPdf')
+      const { PDFDocument } = await import('pdf-lib')
+      const combined = await PDFDocument.create()
+      for (const d of project.decks) {
+        if (d.cards.length === 0) continue
+        const sheetBytes = await buildPrintPdf(project.preset, d)
+        const sheetDoc = await PDFDocument.load(sheetBytes)
+        const pages = await combined.copyPages(sheetDoc, sheetDoc.getPageIndices())
+        pages.forEach(p => combined.addPage(p))
+      }
+      const bytes = await combined.save()
+      triggerDownload(bytes, 'photocards-all.pdf')
       setShowFeedbackPrompt(true)
     } catch {
       setExportError('PDF generation failed — please try again.')
@@ -91,7 +151,7 @@ function App() {
     if (step.id === 'crop-front') {
       if (!step.imageSrc.startsWith('data:')) URL.revokeObjectURL(step.imageSrc)
       if (step.editingPending) {
-        setStep({ id: 'upload-back', pendingCard: step.editingPending })
+        setStep({ id: 'upload-back', pendingCard: step.editingPending, targetDeck: step.targetDeck })
       } else {
         setStep({ id: 'idle' })
       }
@@ -106,13 +166,11 @@ function App() {
       return
     }
     if (step.id === 'crop-back') {
-      // Go back to upload-back, preserve the file URL as pendingBackSrc
-      setStep({ id: 'upload-back', pendingCard: step.pendingCard, pendingBackSrc: step.imageSrc })
+      setStep({ id: 'upload-back', pendingCard: step.pendingCard, pendingBackSrc: step.imageSrc, targetDeck: step.targetDeck })
       return
     }
     if (step.id === 'edit-side') {
-      // Only revoke if this is a NEW file (not the card's stored src which we want to keep)
-      const card = deck.cards.find(c => c.id === step.cardId)
+      const card = project.decks[step.deckIndex]?.cards.find(c => c.id === step.cardId)
       const storedSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
       if (step.imageSrc !== storedSrc && step.imageSrc.startsWith('blob:')) {
         URL.revokeObjectURL(step.imageSrc)
@@ -122,15 +180,13 @@ function App() {
   }
 
   function handleGoHome() {
-    const hasDeck = total > 0
     const inFlow = step.id !== 'idle'
-    if (!hasDeck && !inFlow) return
-    const msg = hasDeck
+    if (!anyCards && !inFlow) return
+    const msg = anyCards
       ? `Clear your deck${inFlow ? ' and cancel this crop' : ''}? This cannot be undone.`
       : 'Cancel this crop and start over?'
     if (!window.confirm(msg)) return
 
-    // Revoke blob URLs for any in-progress work not yet tracked in the deck
     if (step.id === 'crop-front') {
       if (step.editingPending?.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.editingPending.frontSrc)
       if (step.imageSrc.startsWith('blob:')) URL.revokeObjectURL(step.imageSrc)
@@ -144,53 +200,56 @@ function App() {
       if (step.pendingCard.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(step.pendingCard.frontSrc)
     }
     if (step.id === 'edit-side') {
-      // Card is in deck — clearDeck handles its stored src. Only revoke if imageSrc is a NEW file.
-      const card = deck.cards.find(c => c.id === step.cardId)
+      const card = project.decks[step.deckIndex]?.cards.find(c => c.id === step.cardId)
       const storedSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
       if (step.imageSrc !== storedSrc && step.imageSrc.startsWith('blob:')) URL.revokeObjectURL(step.imageSrc)
     }
     if (step.id === 'confirm-back-scope') {
-      const card = deck.cards.find(c => c.id === step.cardId)
+      const card = project.decks[step.deckIndex]?.cards.find(c => c.id === step.cardId)
       if (step.newSrc !== card?.backSrc && step.newSrc.startsWith('blob:')) URL.revokeObjectURL(step.newSrc)
     }
 
-    clearDeck()
+    resetProject()
     setStep({ id: 'idle' })
   }
 
-  // Front upload → crop
-  function handleFrontFile(file: File) {
-    setStep({ id: 'crop-front', imageSrc: URL.createObjectURL(file) })
+  function handleRemoveDeck(deckIndex: number) {
+    const deck = project.decks[deckIndex]
+    if (deck && deck.cards.length > 0) {
+      if (!window.confirm(`Remove Sheet ${deckIndex + 1} and its ${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}?`)) return
+    }
+    removeDeck(deckIndex)
+  }
+
+  function handleFrontFile(file: File, targetDeck: number) {
+    setStep({ id: 'crop-front', imageSrc: URL.createObjectURL(file), targetDeck })
   }
 
   function handleFrontConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'crop-front') return
     if (step.editingPending) {
-      // Re-editing front from upload-back step — preserve existing frontSrc, update state
-      setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl, frontState: state } })
+      setStep({ id: 'upload-back', pendingCard: { ...step.editingPending, front: dataUrl, frontState: state }, targetDeck: step.targetDeck })
     } else {
-      // New upload — keep the blob URL and state for future re-editing
       const card = createCard()
       card.front = dataUrl
-      setStep({ id: 'upload-back', pendingCard: { ...card, frontSrc: step.imageSrc, frontState: state } })
+      setStep({ id: 'upload-back', pendingCard: { ...card, frontSrc: step.imageSrc, frontState: state }, targetDeck: step.targetDeck })
     }
   }
 
-  // Back upload → crop
   function handleBackFile(file: File) {
     if (step.id !== 'upload-back') return
     if (step.pendingBackSrc) {
       if (!window.confirm('Replace the back image you already selected?')) return
       URL.revokeObjectURL(step.pendingBackSrc)
     }
-    setStep({ id: 'crop-back', imageSrc: URL.createObjectURL(file), pendingCard: step.pendingCard, setAsShared })
+    setStep({ id: 'crop-back', imageSrc: URL.createObjectURL(file), pendingCard: step.pendingCard, setAsShared, targetDeck: step.targetDeck })
   }
 
   function handleBackConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'crop-back') return
     const card = { ...step.pendingCard, back: dataUrl, backSrc: step.imageSrc, backState: state }
-    addCard(card)
-    if (step.setAsShared) setSharedBack(dataUrl)
+    addCard(step.targetDeck, card)
+    if (step.setAsShared) setSharedBack(step.targetDeck, dataUrl)
     setSetAsShared(false)
     setStep({ id: 'idle' })
     setCardAdded(true)
@@ -200,31 +259,31 @@ function App() {
   function handleUseExistingBack(dataUrl: string) {
     if (step.id !== 'upload-back') return
     if (step.pendingBackSrc) URL.revokeObjectURL(step.pendingBackSrc)
-    addCard({ ...step.pendingCard, back: dataUrl })
+    addCard(step.targetDeck, { ...step.pendingCard, back: dataUrl })
     setSetAsShared(false)
     setStep({ id: 'idle' })
     setCardAdded(true)
     setTimeout(() => setCardAdded(false), 2000)
   }
 
-  // Edit a side of an existing card
-  function handleEditFile(cardId: string, side: 'front' | 'back', file: File) {
-    setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId, side })
+  function handleEditFile(cardId: string, side: 'front' | 'back', file: File, deckIndex: number) {
+    setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId, side, deckIndex })
   }
 
-  function handleReEditSide(cardId: string, side: 'front' | 'back') {
-    const card = deck.cards.find(c => c.id === cardId)
+  function handleReEditSide(cardId: string, side: 'front' | 'back', deckIndex: number) {
+    const card = project.decks[deckIndex]?.cards.find(c => c.id === cardId)
     if (!card) return
     const src = side === 'front' ? card.frontSrc : card.backSrc
     if (!src) return
     const savedState = side === 'front' ? card.frontState : card.backState
-    setStep({ id: 'edit-side', imageSrc: src, cardId, side, initialState: savedState })
+    setStep({ id: 'edit-side', imageSrc: src, cardId, side, initialState: savedState, deckIndex })
   }
 
   function handleEditConfirm(dataUrl: string, state: CropState) {
     if (step.id !== 'edit-side') return
 
-    const card = deck.cards.find(c => c.id === step.cardId)
+    const deck = project.decks[step.deckIndex]
+    const card = deck?.cards.find(c => c.id === step.cardId)
     const oldSrc = step.side === 'front' ? card?.frontSrc : card?.backSrc
     if (oldSrc && oldSrc !== step.imageSrc && oldSrc.startsWith('blob:')) {
       URL.revokeObjectURL(oldSrc)
@@ -232,40 +291,40 @@ function App() {
 
     if (step.side === 'back') {
       const originalBack = card?.back
-      const sharingCardIds = deck.cards
+      const sharingCardIds = (deck?.cards ?? [])
         .filter(c => c.id !== step.cardId && c.back !== null && c.back === originalBack)
         .map(c => c.id)
 
       if (sharingCardIds.length > 0) {
-        setStep({ id: 'confirm-back-scope', dataUrl, newSrc: step.imageSrc, state, cardId: step.cardId, sharingCardIds })
+        setStep({ id: 'confirm-back-scope', dataUrl, newSrc: step.imageSrc, state, cardId: step.cardId, sharingCardIds, deckIndex: step.deckIndex })
         return
       }
     }
 
     const srcKey = step.side === 'front' ? 'frontSrc' : 'backSrc'
     const stateKey = step.side === 'front' ? 'frontState' : 'backState'
-    updateCard(step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc, [stateKey]: state })
+    updateCard(step.deckIndex, step.cardId, { [step.side]: dataUrl, [srcKey]: step.imageSrc, [stateKey]: state })
     setStep({ id: 'idle' })
   }
 
   function handleBackScopeJustThis() {
     if (step.id !== 'confirm-back-scope') return
-    updateCard(step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
+    updateCard(step.deckIndex, step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
     setStep({ id: 'idle' })
   }
 
   function handleBackScopeAll() {
     if (step.id !== 'confirm-back-scope') return
-    updateCard(step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
+    updateCard(step.deckIndex, step.cardId, { back: step.dataUrl, backSrc: step.newSrc, backState: step.state })
     for (const id of step.sharingCardIds) {
-      updateCard(id, { back: step.dataUrl, backSrc: undefined, backState: undefined })
+      updateCard(step.deckIndex, id, { back: step.dataUrl, backSrc: undefined, backState: undefined })
     }
     setStep({ id: 'idle' })
   }
 
   function handleBackScopeCancel() {
     if (step.id !== 'confirm-back-scope') return
-    const card = deck.cards.find(c => c.id === step.cardId)
+    const card = project.decks[step.deckIndex]?.cards.find(c => c.id === step.cardId)
     if (step.newSrc !== card?.backSrc && step.newSrc.startsWith('blob:')) {
       URL.revokeObjectURL(step.newSrc)
     }
@@ -290,8 +349,9 @@ function App() {
   }
 
   if (step.id === 'upload-back') {
+    const targetDeckCards = project.decks[step.targetDeck]?.cards ?? []
     const knownBacks = [...new Set(
-      deck.cards.map(c => c.back).filter((b): b is string => b !== null)
+      targetDeckCards.map(c => c.back).filter((b): b is string => b !== null)
     )]
     return (
       <div className="app">
@@ -313,6 +373,7 @@ function App() {
                     imageSrc: step.pendingCard.front!,
                     editingPending: step.pendingCard,
                     initialState: step.pendingCard.frontState,
+                    targetDeck: step.targetDeck,
                   })
                 }
               >
@@ -409,12 +470,12 @@ function App() {
             onConfirm={handleEditConfirm}
             onCancel={handleCancel}
             onReplace={(file) => {
-              const card = deck.cards.find(c => c.id === editStep.cardId)
+              const card = project.decks[editStep.deckIndex]?.cards.find(c => c.id === editStep.cardId)
               const storedSrc = editStep.side === 'front' ? card?.frontSrc : card?.backSrc
               if (editStep.imageSrc !== storedSrc && editStep.imageSrc.startsWith('blob:')) {
                 URL.revokeObjectURL(editStep.imageSrc)
               }
-              setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId: editStep.cardId, side: editStep.side })
+              setStep({ id: 'edit-side', imageSrc: URL.createObjectURL(file), cardId: editStep.cardId, side: editStep.side, deckIndex: editStep.deckIndex })
             }}
           />
         </main>
@@ -447,10 +508,14 @@ function App() {
     )
   }
 
+  const headerCount = project.decks.length > 1
+    ? `${totalCards} cards · ${project.decks.length} sheets`
+    : `${deckTotal(project.decks[0])} / ${nUp} cards`
+
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-header__brand" onClick={handleGoHome} style={{ cursor: total > 0 ? 'pointer' : undefined }}>
+        <div className="app-header__brand" onClick={handleGoHome} style={{ cursor: anyCards ? 'pointer' : undefined }}>
           <div className="app-header__title-row">
             <img src="/icon-cards.png" className="app-header__icon-left" alt="" />
             <h1>pocalab</h1>
@@ -458,81 +523,153 @@ function App() {
           </div>
           <span className="app-header__tagline">a K-pop photocard maker</span>
         </div>
-        <span className="app-header__count" aria-live="polite" aria-atomic="true">{total} / {DECK_MAX_CARDS} cards</span>
+        <span className="app-header__count" aria-live="polite" aria-atomic="true">{headerCount}</span>
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
 
-      <main className={`app-main${deck.cards.length > 0 ? ' app-main--with-bar' : ''}`}>
-        {deck.cards.length > 0 && (
-          <div className="deck-grid">
-            {deck.cards.map((card) => (
-              <DeckCard
-                key={card.id}
-                card={card}
-                copies={deck.copies[card.id] ?? 1}
-                maxCopies={DECK_MAX_CARDS - total + (deck.copies[card.id] ?? 1)}
-                onCopiesChange={(count) => setCopies(card.id, count)}
-                onRemove={() => removeCard(card.id)}
-                onEditSide={(side, file) => handleEditFile(card.id, side, file)}
-                onReEditSide={(side) => handleReEditSide(card.id, side)}
-              />
-            ))}
-          </div>
+      <main className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
+
+        {project.decks.map((deck, di) => {
+          const dTotal = deckTotal(deck)
+          const isFull = dTotal >= nUp
+          return (
+            <div key={di} className="deck-section">
+              {project.decks.length > 1 && (
+                <div className="deck-section__header">
+                  <span className="deck-section__label">Sheet {di + 1}</span>
+                  <button
+                    className="deck-section__remove"
+                    onClick={() => handleRemoveDeck(di)}
+                  >
+                    Remove ×
+                  </button>
+                </div>
+              )}
+
+              {deck.cards.length > 0 && (
+                <div className="deck-grid">
+                  {deck.cards.map((card) => (
+                    <DeckCard
+                      key={card.id}
+                      card={card}
+                      copies={deck.copies[card.id] ?? 1}
+                      maxCopies={nUp - dTotal + (deck.copies[card.id] ?? 1)}
+                      hideCopies={isPhotoPaper}
+                      onCopiesChange={(count) => setCopies(di, card.id, count)}
+                      onRemove={() => removeCard(di, card.id)}
+                      onEditSide={(side, file) => handleEditFile(card.id, side, file, di)}
+                      onReEditSide={(side) => handleReEditSide(card.id, side, di)}
+                      onMoveTo={isPhotoPaper && project.decks.length > 1 ? (toDi) => moveCard(di, toDi, card.id) : undefined}
+                      deckCount={project.decks.length}
+                      deckIndex={di}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!isFull && (
+                <label className="deck-section__add">
+                  + Add image
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, di) }}
+                    hidden
+                  />
+                </label>
+              )}
+
+              {isFull && deck.cards.length > 0 && (
+                <p className="deck-full">
+                  {isPhotoPaper
+                    ? 'Sheet is full.'
+                    : 'Deck is full — remove a card or reduce copies to add more.'}
+                </p>
+              )}
+            </div>
+          )
+        })}
+
+        {isPhotoPaper && (
+          <button className="btn btn--ghost deck-add-sheet" onClick={() => addDeck()}>
+            + Add sheet
+          </button>
         )}
 
-        {deck.cards.length > 0 && (
+        {!anyCards && (
+          <>
+            <p className="deck-intro">Build a deck of up to {nUp} photocards — then export as a print-ready PDF.</p>
+            <ImageUpload onFile={(f) => handleFrontFile(f, 0)} />
+          </>
+        )}
+
+        {anyCards && (
           <div className="deck-actions deck-actions--desktop">
             <div className="paper-size-toggle">
-              <button
-                className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('letter')}
-              >
-                US Letter
-              </button>
-              <button
-                className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('a4')}
-              >
-                A4
-              </button>
+              {Object.values(PRESETS).map(p => (
+                <button
+                  key={p.id}
+                  className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
+                  onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
-            <button className="btn btn--primary" onClick={handleExport} disabled={exporting}>
-              {exporting ? 'Generating…' : 'Download PDF'}
-            </button>
+            {isPhotoPaper && project.preset.id === '5x7-4up' && (
+              <p className="deck-actions__hint">Tight layout — near-perfect registration required.</p>
+            )}
+            {isPhotoPaper && (
+              <details className="print-guidance">
+                <summary>ET-8550 print tips</summary>
+                <p>Feed through the <strong>rear straight pass</strong>, not the front cassette. Enable <strong>borderless</strong> for the sheet size. Set media type to the matching photo/matte profile. Allow extra dry time before laminating.</p>
+              </details>
+            )}
+            <div className="deck-actions__buttons">
+              {project.decks.map((deck, di) => deck.cards.length > 0 && (
+                <button key={di} className="btn btn--primary" onClick={() => handleExport(di)} disabled={exporting}>
+                  {exporting ? 'Generating…' : isPhotoPaper
+                    ? (project.decks.filter(d => d.cards.length > 0).length > 1 ? `Download sheet ${di + 1}` : 'Download sheet')
+                    : 'Download PDF'}
+                </button>
+              ))}
+              {isPhotoPaper && project.decks.filter(d => d.cards.length > 0).length > 1 && (
+                <button className="btn btn--ghost" onClick={handleExportAll} disabled={exporting}>
+                  Download all sheets
+                </button>
+              )}
+            </div>
             {exportError && <p className="deck-actions__error">{exportError}</p>}
           </div>
         )}
 
-        {deck.cards.length > 0 && (
+        {anyCards && (
           <div className="deck-bar">
             {exportError && <p className="deck-bar__error">{exportError}</p>}
             <div className="paper-size-toggle">
-              <button
-                className={`paper-size-btn${paperSize === 'letter' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('letter')}
-              >
-                US Letter
-              </button>
-              <button
-                className={`paper-size-btn${paperSize === 'a4' ? ' paper-size-btn--on' : ''}`}
-                onClick={() => setPaperSize('a4')}
-              >
-                A4
-              </button>
+              {Object.values(PRESETS).map(p => (
+                <button
+                  key={p.id}
+                  className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
+                  onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
-            {total < DECK_MAX_CARDS && (
+            {firstAvailableDeck() >= 0 && project.decks[firstAvailableDeck()] && deckTotal(project.decks[firstAvailableDeck()]) < nUp && (
               <label className="deck-bar__add">
                 + Add image
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f) }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, firstAvailableDeck()) }}
                   hidden
                 />
               </label>
             )}
-            <button className="btn btn--primary deck-bar__download" onClick={handleExport} disabled={exporting}>
-              {exporting ? 'Generating…' : 'Download PDF'}
+            <button className="btn btn--primary deck-bar__download" onClick={() => handleExport(0)} disabled={exporting}>
+              {exporting ? 'Generating…' : isPhotoPaper ? 'Download sheet' : 'Download PDF'}
             </button>
           </div>
         )}
@@ -546,22 +683,13 @@ function App() {
             <button className="feedback-prompt__dismiss" onClick={() => setShowFeedbackPrompt(false)} aria-label="Dismiss">×</button>
           </div>
         )}
-
-        {total < DECK_MAX_CARDS && (
-          <div className={deck.cards.length > 0 ? 'deck-upload' : undefined}>
-            {deck.cards.length === 0 && (
-              <p className="deck-intro">Build a deck of up to 9 photocards — then export as a print-ready PDF.</p>
-            )}
-            <ImageUpload onFile={handleFrontFile} />
-          </div>
-        )}
-
-        {total >= DECK_MAX_CARDS && (
-          <p className="deck-full">Deck is full — remove a card or reduce copies to add more.</p>
-        )}
       </main>
 
-      {cardAdded && <div className="toast" role="status" aria-live="polite">Card added to deck</div>}
+      {(cardAdded || splitToast) && (
+        <div className="toast" role="status" aria-live="polite">
+          {splitToast ?? 'Card added to deck'}
+        </div>
+      )}
     </div>
   )
 }

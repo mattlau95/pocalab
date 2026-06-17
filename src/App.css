@@ -71,13 +71,73 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+.deck-section {
+  margin-bottom: 20px;
+}
+
+.deck-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.deck-section__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.deck-section__remove {
+  font-size: 12px;
+  color: var(--foreground-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+}
+
+.deck-section__remove:hover {
+  color: var(--destructive, #dc2626);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.deck-section__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1.5px dashed var(--primary);
+  border-radius: 6px;
+  margin-top: 4px;
+  transition: background 0.1s;
+}
+
+.deck-section__add:hover {
+  background: var(--primary-muted);
+}
+
+.deck-add-sheet {
+  margin-top: 4px;
+  margin-bottom: 16px;
 }
 
 .deck-full {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--foreground-muted);
-  margin-top: 8px;
+  margin-top: 6px;
+  margin-bottom: 4px;
 }
 
 .deck-intro {
@@ -253,6 +313,44 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 24px;
+}
+
+.deck-actions__hint {
+  font-size: 12px;
+  color: var(--foreground-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.deck-actions__buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.print-guidance {
+  font-size: 13px;
+  color: var(--foreground-muted);
+  max-width: 420px;
+  text-align: center;
+}
+
+.print-guidance summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--foreground);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.print-guidance summary::-webkit-details-marker { display: none; }
+
+.print-guidance p {
+  margin: 8px 0 0;
+  line-height: 1.5;
 }
 
 .paper-size-toggle {

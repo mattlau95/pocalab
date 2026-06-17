@@ -1,5 +1,8 @@
 import { CARD_BLEED } from './dimensions'
 
+const DPI = 300
+const MM_PER_IN = 25.4
+
 interface PixelArea {
   x: number
   y: number
@@ -13,6 +16,7 @@ export async function getCroppedDataUrl(
   rotation = 0,
   bgColor = '#ffffff',
   fade = 0,
+  bleedMm = 2,
 ): Promise<string> {
   const image = await loadImage(imageSrc)
 
@@ -34,9 +38,16 @@ export async function getCroppedDataUrl(
   // Crop from the rotated canvas and scale to the 300 DPI bleed dimensions.
   // Fill with bgColor first so transparent image pixels and any areas outside
   // the image (when zoomed out below 100%) show the chosen background.
+  const outW = bleedMm === 2
+    ? CARD_BLEED.widthPx
+    : Math.round((55 + 2 * bleedMm) * (DPI / MM_PER_IN))
+  const outH = bleedMm === 2
+    ? CARD_BLEED.heightPx
+    : Math.round((85 + 2 * bleedMm) * (DPI / MM_PER_IN))
+
   const out = document.createElement('canvas')
-  out.width = CARD_BLEED.widthPx
-  out.height = CARD_BLEED.heightPx
+  out.width = outW
+  out.height = outH
   const outCtx = out.getContext('2d', { colorSpace: 'srgb' })!
   outCtx.fillStyle = bgColor
   outCtx.fillRect(0, 0, out.width, out.height)
