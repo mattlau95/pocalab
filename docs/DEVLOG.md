@@ -48,6 +48,12 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-17 — Mobile color picker fallback + backlog audit (MAT-314)
+
+**MAT-314 — Editable hex input for background color.** On iOS Safari and some Android browsers, `<input type="color">` either fails silently or doesn't open reliably. The hex value next to the swatch was a read-only `<span>` — useless on mobile. Replaced it with a styled text input (`.ctrl-hex-input`) that looks identical to the span at rest but becomes an editable field on tap or click. A separate `hexDraft` state tracks in-progress typing so `bgColor` stays valid at all times — partial values like `#ff` don't corrupt the viewport background or the export. On blur, a valid 6-digit hex applies and pushes to undo history; invalid input reverts to the last good color. The color picker swatch still works normally on desktop.
+
+**Backlog audit.** A pass through the open Linear backlog closed 9 issues that were already implemented in the codebase but never marked done: robots.txt + sitemap (MAT-304), OG image (MAT-302), SEO hero text (MAT-303), mobile upload copy (MAT-315), previously-used back gallery (MAT-313), centered badge (MAT-310), live deploy (MAT-293), dynamic crop viewport (MAT-311), and canvas compositing for small images (MAT-312). MAT-306 (affiliate link) was cancelled — not the right time.
+
 ## 2026-06-17 — Quick-win batch: UX polish across editor, deck, and onboarding (MAT-367, MAT-376, MAT-384–387)
 
 Seven quick-win issues shipped in one session.
