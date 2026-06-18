@@ -531,6 +531,7 @@ function App() {
       <main className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
 
         {project.decks.map((deck, di) => {
+          if (deck.cards.length === 0 && project.decks.length === 1) return null
           const dTotal = deckTotal(deck)
           const isFull = dTotal >= nUp
           return (
