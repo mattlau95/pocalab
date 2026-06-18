@@ -68,12 +68,13 @@ export function SheetPreview({ preset, thumbnails = [] }: SheetPreviewProps) {
             {/* Card area — nested SVG clips the thumbnail */}
             <svg x={slot.x} y={slot.y} width={slot.w} height={slot.h} overflow="hidden">
               {thumb ? (
-                <image
-                  href={thumb}
-                  x={0} y={0}
-                  width={slot.w} height={slot.h}
-                  preserveAspectRatio="xMidYMid slice"
-                />
+                slot.w > slot.h ? (
+                  <g transform={`translate(${slot.w / 2},${slot.h / 2}) rotate(-90) translate(${-slot.h / 2},${-slot.w / 2})`}>
+                    <image href={thumb} x={0} y={0} width={slot.h} height={slot.w} preserveAspectRatio="xMidYMid slice" />
+                  </g>
+                ) : (
+                  <image href={thumb} x={0} y={0} width={slot.w} height={slot.h} preserveAspectRatio="xMidYMid slice" />
+                )
               ) : (
                 <rect width={slot.w} height={slot.h} fill="#f5efea" />
               )}
