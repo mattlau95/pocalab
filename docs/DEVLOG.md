@@ -168,6 +168,22 @@ The component takes `preset` and `thumbnails[]` props, calls `layout()` internal
 
 ---
 
+## 2026-06-18 — Home page cleanup and SheetPreview orientation fixes
+
+Two bugs found and fixed in the same session.
+
+### Empty home page clutter
+
+The idle home state was rendering a full `deck-section` div even before any cards were added. This meant the sheet label, `SheetPreview` widget, and a "+ Add image" dashed button all appeared above the main upload drop zone — three competing entry points where there should be one. The fix is an early `return null` at the top of the `project.decks.map` loop when `deck.cards.length === 0 && project.decks.length === 1`. Once cards exist, or once the user is in multi-deck mode (photo paper with a second sheet added), the section renders normally. The duplicate `deck.cards.length > 0 || project.decks.length > 1` guards on the header and add-button that were added in an intermediate pass were also removed — the early return makes them redundant.
+
+### SheetPreview orientation — two separate bugs
+
+**Letter and A4 grids overflowed.** Both presets had `orientation: 'landscape'` in `preset.ts`. This feeds into `layout()` in `printLayout.ts`, which sets `cardW = 85` for landscape. Three 85 mm cards plus two 4 mm gutters is 263 mm — wider than the 215.9 mm letter sheet. The result was `marginX = −23.55 mm`: every card slot started off the left edge of the SVG viewBox and the grid was completely garbled. The fix is changing both presets to `orientation: 'portrait'` (cardW = 55, contentW = 173 mm — fits with 21 mm margins). This is safe because `createPhotocardPdf` for letter/A4 uses its own `LETTER_CONFIG`/`A4_CONFIG` from `./layout` and never reads `preset.orientation`.
+
+**Photo paper landscape slots showed portrait images incorrectly.** The 4×6-2up, 5×7-2up, and 5×7-3up presets correctly use `orientation: 'landscape'` — cards are physically printed rotated 90° on portrait paper so they fit. But `CropEditor` always crops to portrait (59×89 mm, from `CARD_BLEED`), so `card.front` is always a portrait-aspect image. Rendering it into an 85×55 landscape slot with no transform produces a heavily cropped, squished result. The fix: in `SheetPreview`, when `slot.w > slot.h`, wrap the `<image>` in a `<g>` with the transform `translate(w/2, h/2) rotate(-90) translate(−h/2, −w/2)` and swap the image dimensions to `width={slot.h} height={slot.w}`. This rotates the portrait image −90° around the center of the landscape cell, filling it correctly. The 5×7-4up preset (portrait orientation, 2×2 grid) was already correct and is unchanged.
+
+---
+
 ## 2026-06-17 — Mobile color picker fallback + backlog audit (MAT-314)
 
 **MAT-314 — Editable hex input for background color.** On iOS Safari and some Android browsers, `<input type="color">` either fails silently or doesn't open reliably. The hex value next to the swatch was a read-only `<span>` — useless on mobile. Replaced it with a styled text input (`.ctrl-hex-input`) that looks identical to the span at rest but becomes an editable field on tap or click. A separate `hexDraft` state tracks in-progress typing so `bgColor` stays valid at all times — partial values like `#ff` don't corrupt the viewport background or the export. On blur, a valid 6-digit hex applies and pushes to undo history; invalid input reverts to the last good color. The color picker swatch still works normally on desktop.
