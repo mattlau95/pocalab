@@ -48,6 +48,71 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-19 — Paper size switching bugs (MAT-394, MAT-436, MAT-437)
+
+### MAT-437 — Consolidate cards when switching to a larger-nUp preset
+
+`SET_PRESET` in `useProject.ts` previously iterated decks one-by-one and only ever split cards into additional sheets. Switching to a preset with a *higher* nUp (e.g. 4×6 2-up → Letter 9-up) left cards fragmented across many sheets instead of packing them back together. That's the root cause of the "cards being taken away" report — they weren't gone, just spread across sheets confusingly.
+
+**Fix: flatten-then-repack.** Rather than iterating each existing deck in isolation, the reducer now:
+
+1. Flattens all cards from all decks into a single ordered list, clamping each card's copies to `newNUp` (so no single card can individually exceed a full sheet).
+2. Repacks that list sequentially into the minimum number of decks — starting a new deck whenever the running total would exceed `newNUp`.
+
+This naturally handles both directions: a smaller nUp splits overflow, a larger nUp consolidates. The clamping also prevents stale copies values from producing decks that exceed the new cap.
+
+```ts
+// Before: deck-by-deck — never merged across original deck boundaries
+for (const deck of project.decks) { ... newDecks.push(current) }
+
+// After: flatten first, then repack
+const flat = project.decks.flatMap(d => d.cards.map(c => ({ card: c, copies: min(d.copies[c.id], newNUp), sharedBack: d.sharedBack })))
+// repack flat into newDecks of size newNUp
+```
+
+### MAT-436 — DeckPaperLabel always visible above the sheet list
+
+`DeckPaperLabel` (the dark pill showing the sheet icon + paper name + dimensions) was only rendered inside the per-deck header when there was exactly one deck. The moment a preset switch created multiple sheets, every header switched to "Sheet N" text and the format indicator disappeared entirely.
+
+**Fix.** The label is now rendered once in a persistent `div.deck-list__label` above the deck loop, visible whenever any cards exist. The per-deck header no longer carries `DeckPaperLabel` — it shows "Sheet N" only when multiple decks exist, and nothing in the left slot otherwise. `.deck-list__label { margin-bottom: 12px }` was added to `App.css` for spacing.
+
+### Copies controls on photo paper
+
+The +/− copies buttons were hidden on all photo paper presets (`hideCopies={isPhotoPaper}`). There's no reason to restrict this — a user printing a 4×6 2-up sheet may well want two copies of the same card. The `hideCopies` prop was removed from the `<DeckCard>` call. `isPhotoPaper` still controls sheet-management UI (Add sheet, Move-to). The "sheet is full" message was unified to "Sheet is full — remove a card or reduce copies to add more." for both preset types.
+
+### MAT-394 — Data model (already done)
+
+The multi-deck + preset model described in this issue (`Project`, `Deck`, `PrintPreset`, `useProject`) was already fully implemented. Marked Done in Linear with no code changes.
+
+---
+
+## 2026-06-19 — Modal close button and sheet preview (MAT-430)
+
+### MAT-430 — Visible close button + sheet preview improvements
+
+**Close button.** The `Modal` component had no visible dismiss affordance — users could only close via Escape or backdrop click. The fix went through two iterations in the same session:
+
+1. First pass added a `×` icon button in the top-right of the modal header (standard pattern).
+2. After review, replaced with a "Close" text button centered at the bottom of the modal. More discoverable and less ambiguous than a small corner icon, especially given the modal's card-like shape.
+
+The `modal__header` is now purely a title row (no flex space-between). A `modal__footer` div holds the centered Close button, styled with the existing `btn btn--ghost` classes.
+
+**Sheet preview — front + back.** The "See Preview" modal previously showed only the front sheet. Actual print output is duplex — two sheets — so the preview now renders both side by side:
+
+```
+  FRONT          BACK
+┌────────┐  ┌────────┐
+│ ██ ░░  │  │ ██ ░░  │
+│ ░░ ░░  │  │ ░░ ░░  │
+└────────┘  └────────┘
+```
+
+Each is a full `SheetPreview` SVG with a small uppercase label above it. Backs fall back to `card.back ?? deck.sharedBack ?? null`, so shared backs render correctly across all slots.
+
+**Centering.** The preview pair sits in `.sheet-preview-pair` (flex, `justify-content: center`), so the two SVGs are centered in the modal regardless of modal width.
+
+---
+
 ## 2026-06-19 — Deck view header redesign (MAT-427, MAT-431)
 
 ### MAT-427 — Verification and bug fixes

@@ -575,6 +575,12 @@ function App() {
 
       <main className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
 
+        {anyCards && (
+          <div className="deck-list__label">
+            <DeckPaperLabel preset={project.preset} />
+          </div>
+        )}
+
         {project.decks.map((deck, di) => {
           if (deck.cards.length === 0 && project.decks.length === 1) return null
           const dTotal = deckTotal(deck)
@@ -582,10 +588,9 @@ function App() {
           return (
             <div key={di} className="deck-section">
               <div className="deck-section__header">
-                {project.decks.length > 1
-                  ? <span className="deck-section__label">{`Sheet ${di + 1}`}</span>
-                  : <DeckPaperLabel preset={project.preset} />
-                }
+                {project.decks.length > 1 && (
+                  <span className="deck-section__label">{`Sheet ${di + 1}`}</span>
+                )}
                 <div className="deck-section__header-right">
                   <button
                     className="btn deck-section__preview-btn"
@@ -618,7 +623,6 @@ function App() {
                       card={card}
                       copies={deck.copies[card.id] ?? 1}
                       maxCopies={nUp - dTotal + (deck.copies[card.id] ?? 1)}
-                      hideCopies={isPhotoPaper}
                       onCopiesChange={(count) => setCopies(di, card.id, count)}
                       onRemove={() => removeCard(di, card.id)}
                       onEditSide={(side, file) => handleEditFile(card.id, side, file, di)}
@@ -632,11 +636,7 @@ function App() {
               )}
 
               {isFull && deck.cards.length > 0 && (
-                <p className="deck-full">
-                  {isPhotoPaper
-                    ? 'Sheet is full.'
-                    : 'Deck is full — remove a card or reduce copies to add more.'}
-                </p>
+                <p className="deck-full">Sheet is full — remove a card or reduce copies to add more.</p>
               )}
             </div>
           )
@@ -729,10 +729,22 @@ function App() {
 
       {previewDeckIndex !== null && (
         <Modal onClose={() => setPreviewDeckIndex(null)} title="Sheet preview">
-          <SheetPreview
-            preset={project.preset}
-            thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.front) ?? []}
-          />
+          <div className="sheet-preview-pair">
+            <div className="sheet-preview-pair__sheet">
+              <span className="sheet-preview-pair__label">Front</span>
+              <SheetPreview
+                preset={project.preset}
+                thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.front) ?? []}
+              />
+            </div>
+            <div className="sheet-preview-pair__sheet">
+              <span className="sheet-preview-pair__label">Back</span>
+              <SheetPreview
+                preset={project.preset}
+                thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.back ?? project.decks[previewDeckIndex!]?.sharedBack ?? null) ?? []}
+              />
+            </div>
+          </div>
         </Modal>
       )}
 

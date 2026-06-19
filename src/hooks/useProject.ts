@@ -33,21 +33,28 @@ function projectReducer(project: Project, action: Action): Project {
   switch (action.type) {
     case 'SET_PRESET': {
       const newNUp = action.preset.nUp
-      // Auto-split decks that exceed the new cap
-      const newDecks: Deck[] = []
+      type Entry = { card: Card; copies: number; sharedBack: string | null }
+      const flat: Entry[] = []
       for (const deck of project.decks) {
-        const cards = [...deck.cards]
-        let current: Deck = { cards: [], copies: {}, sharedBack: deck.sharedBack }
-        for (const card of cards) {
-          if (deckTotal(current) >= newNUp) {
-            newDecks.push(current)
-            current = { cards: [], copies: {}, sharedBack: deck.sharedBack }
-          }
-          current.cards.push(card)
-          current.copies[card.id] = deck.copies[card.id] ?? 1
+        for (const card of deck.cards) {
+          flat.push({
+            card,
+            copies: Math.min(deck.copies[card.id] ?? 1, newNUp),
+            sharedBack: deck.sharedBack,
+          })
         }
-        newDecks.push(current)
       }
+      const newDecks: Deck[] = []
+      let cur: Deck = { cards: [], copies: {}, sharedBack: flat[0]?.sharedBack ?? null }
+      for (const { card, copies, sharedBack } of flat) {
+        if (deckTotal(cur) + copies > newNUp && cur.cards.length > 0) {
+          newDecks.push(cur)
+          cur = { cards: [], copies: {}, sharedBack }
+        }
+        cur.cards.push(card)
+        cur.copies[card.id] = copies
+      }
+      newDecks.push(cur)
       return { preset: action.preset, decks: newDecks.length > 0 ? newDecks : [createDeck()] }
     }
 

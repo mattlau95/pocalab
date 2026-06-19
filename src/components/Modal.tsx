@@ -19,11 +19,11 @@ export function Modal({ onClose, children, title }: Props) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal__header">
-          {title && <span className="modal__title">{title}</span>}
-          <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
-        </div>
+        {title && <div className="modal__header"><span className="modal__title">{title}</span></div>}
         {children}
+        <div className="modal__footer">
+          <button className="btn btn--ghost modal__close-btn" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   )

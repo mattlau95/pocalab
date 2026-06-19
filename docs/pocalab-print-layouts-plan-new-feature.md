@@ -27,6 +27,8 @@ Units in mm. Sheet sizes are exact in PostScript points (1 in = 72 pt), which ma
 | C | 5×7 (127×177.8) | 3 | landscape (85w×55h) | 1.5 mm | 3.0 mm | 21.0 / 3.4 mm | Balanced — yield vs. tight vertical |
 | D | 5×7 (127×177.8) | 4 | portrait (55w×85h, 2×2) | 1.5 mm | 3.0 mm | 7.0 / 2.4 mm | Max yield — fragile, validate carefully |
 
+This would be in addition to the existing pocalab letter paper functionality.
+
 ### Why these bleed values are the ceiling, not a preference
 
 The binding constraint is always the tight axis. Solving `cards + gutters + 2×outer-bleed ≤ sheet` for the max bleed each layout can physically hold:

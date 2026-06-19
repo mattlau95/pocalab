@@ -21,11 +21,7 @@
 }
 
 .modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 16px;
-  min-height: 24px;
 }
 
 .modal__title {
@@ -34,25 +30,12 @@
   color: var(--foreground);
 }
 
-.modal__close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-foreground);
-  font-size: 20px;
-  line-height: 1;
-  padding: 0;
-  margin-left: auto;
+.modal__footer {
   display: flex;
-  align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
+  margin-top: 20px;
 }
 
-.modal__close:hover {
-  background: var(--accent);
-  color: var(--foreground);
+.modal__close-btn {
+  min-width: 80px;
 }
