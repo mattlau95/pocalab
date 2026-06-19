@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { useProject, deckTotal } from './hooks/useProject'
-import { PRESETS } from './models/preset'
+import { PRESETS, type PrintPreset } from './models/preset'
 import { useBeforeUnload } from './hooks/useBeforeUnload'
 import { ImageUpload } from './components/ImageUpload'
 import { CropEditor } from './components/CropEditor'
 import { DeckCard } from './components/DeckCard'
 import { SheetPreview } from './components/SheetPreview'
+import { Modal } from './components/Modal'
 import { createCard } from './models/card'
 import type { Card, CropState } from './models/card'
 import type { Deck } from './models/deck'
@@ -20,6 +21,48 @@ const EXAMPLE_BACKS = [
   `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ee4897"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><rect width="295" height="445" fill="url(#g)"/><rect x="16" y="16" width="263" height="413" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5"/></svg>')}`,
   `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><rect width="295" height="445" fill="#fffbf7"/><rect x="12" y="12" width="271" height="421" rx="6" fill="none" stroke="#f0dcca" stroke-width="2.5"/><rect x="20" y="20" width="255" height="405" rx="4" fill="none" stroke="#f0dcca" stroke-width="1"/></svg>')}`,
 ]
+
+const PRESET_DIMS: Record<string, string> = {
+  'letter':  '8.5×11"',
+  'a4':      '210×297mm',
+  '4x6-2up': '4×6"',
+  '5x7-2up': '5×7"',
+  '5x7-3up': '5×7"',
+  '5x7-4up': '5×7"',
+}
+
+function SheetIcon({ cols, rows }: { cols: number; rows: number }) {
+  const W = 24, H = 32, bw = 1, pad = 2.5, gap = 1
+  const innerW = W - bw * 2 - pad * 2
+  const innerH = H - bw * 2 - pad * 2
+  const cellW = (innerW - gap * (cols - 1)) / cols
+  const cellH = (innerH - gap * (rows - 1)) / rows
+  const cells: { x: number; y: number }[] = []
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      cells.push({ x: bw + pad + c * (cellW + gap), y: bw + pad + r * (cellH + gap) })
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true">
+      <rect x={bw / 2} y={bw / 2} width={W - bw} height={H - bw} rx="2" stroke="currentColor" strokeOpacity="0.4" strokeWidth={bw} />
+      {cells.map((cell, i) => (
+        <rect key={i} x={cell.x} y={cell.y} width={cellW} height={cellH} rx="0.5" fill="currentColor" fillOpacity="0.6" />
+      ))}
+    </svg>
+  )
+}
+
+function DeckPaperLabel({ preset }: { preset: PrintPreset }) {
+  const dims = PRESET_DIMS[preset.id] ?? ''
+  const isNUp = preset.label.toLowerCase().includes('-up')
+  return (
+    <div className="deck-paper-label">
+      <SheetIcon cols={preset.cols} rows={preset.rows} />
+      <span className="deck-paper-label__name">
+        {isNUp ? `${dims} (${preset.nUp} cards)` : `${preset.label} ${dims} (${preset.nUp} cards)`}
+      </span>
+    </div>
+  )
+}
 
 function AppHeader({ onHome }: { onHome?: () => void }) {
   return (
@@ -66,6 +109,8 @@ function App() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
   const [splitToast, setSplitToast] = useState<string | null>(null)
+  const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
+  const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
   const prevDeckCount = useRef(project.decks.length)
   const justSwitchedPreset = useRef(false)
 
@@ -537,14 +582,23 @@ function App() {
           return (
             <div key={di} className="deck-section">
               <div className="deck-section__header">
-                <span className="deck-section__label">
-                  {project.decks.length > 1 ? `Sheet ${di + 1}` : project.preset.label}
-                </span>
+                {project.decks.length > 1
+                  ? <span className="deck-section__label">{`Sheet ${di + 1}`}</span>
+                  : <DeckPaperLabel preset={project.preset} />
+                }
                 <div className="deck-section__header-right">
-                  <SheetPreview
-                    preset={project.preset}
-                    thumbnails={deck.cards.map(c => c.front)}
-                  />
+                  <button
+                    className="btn deck-section__preview-btn"
+                    onClick={() => setPreviewDeckIndex(di)}
+                  >
+                    See Preview
+                  </button>
+                  <button
+                    className="btn deck-section__paper-size-btn"
+                    onClick={() => setShowPaperSizeModal(true)}
+                  >
+                    Change Paper Size
+                  </button>
                   {project.decks.length > 1 && (
                     <button
                       className="deck-section__remove"
@@ -577,18 +631,6 @@ function App() {
                 </div>
               )}
 
-              {!isFull && (
-                <label className="deck-section__add">
-                  + Add image
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, di) }}
-                    hidden
-                  />
-                </label>
-              )}
-
               {isFull && deck.cards.length > 0 && (
                 <p className="deck-full">
                   {isPhotoPaper
@@ -615,17 +657,6 @@ function App() {
 
         {anyCards && (
           <div className="deck-actions deck-actions--desktop">
-            <div className="paper-size-toggle">
-              {Object.values(PRESETS).map(p => (
-                <button
-                  key={p.id}
-                  className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
-                  onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
             {isPhotoPaper && project.preset.id === '5x7-4up' && (
               <p className="deck-actions__hint">Tight layout — near-perfect registration required.</p>
             )}
@@ -653,20 +684,15 @@ function App() {
           </div>
         )}
 
+        {anyCards && project.decks.some(d => deckTotal(d) < nUp) && (
+          <div className="deck-upload">
+            <ImageUpload onFile={(f) => handleFrontFile(f, firstAvailableDeck())} />
+          </div>
+        )}
+
         {anyCards && (
           <div className="deck-bar">
             {exportError && <p className="deck-bar__error">{exportError}</p>}
-            <div className="paper-size-toggle">
-              {Object.values(PRESETS).map(p => (
-                <button
-                  key={p.id}
-                  className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
-                  onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
             {firstAvailableDeck() >= 0 && project.decks[firstAvailableDeck()] && deckTotal(project.decks[firstAvailableDeck()]) < nUp && (
               <label className="deck-bar__add">
                 + Add image
@@ -699,6 +725,31 @@ function App() {
         <div className="toast" role="status" aria-live="polite">
           {splitToast ?? 'Card added to deck'}
         </div>
+      )}
+
+      {previewDeckIndex !== null && (
+        <Modal onClose={() => setPreviewDeckIndex(null)} title="Sheet preview">
+          <SheetPreview
+            preset={project.preset}
+            thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.front) ?? []}
+          />
+        </Modal>
+      )}
+
+      {showPaperSizeModal && (
+        <Modal onClose={() => setShowPaperSizeModal(false)} title="Paper size">
+          <div className="paper-size-options">
+            {Object.values(PRESETS).map(p => (
+              <button
+                key={p.id}
+                className={`paper-size-option${project.preset.id === p.id ? ' paper-size-option--on' : ''}`}
+                onClick={() => { justSwitchedPreset.current = true; setPreset(p); setShowPaperSizeModal(false) }}
+              >
+                <DeckPaperLabel preset={p} />
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
     </div>
   )

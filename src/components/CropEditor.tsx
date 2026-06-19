@@ -353,6 +353,12 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               spellCheck={false}
               aria-label="Background color hex value"
             />
+          </div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label" htmlFor="crop-fade">Fade</label>
+          <div className="control-row">
             <input
               id="crop-fade"
               type="range"

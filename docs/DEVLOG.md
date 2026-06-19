@@ -48,6 +48,75 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-19 — Deck view header redesign (MAT-427, MAT-431)
+
+### MAT-427 — Verification and bug fixes
+
+MAT-427 landed in a prior session with the full implementation in the working tree but unverified. Today's session verified it against Figma and fixed two bugs found in the process.
+
+**Figma verification.** Four Figma nodes were inspected (1-173, 1-122, 1-204, 1-369). Node 1-369 is the authoritative header design — it shows the full dark pill bar with the sheet label on the left and action buttons on the right. Two discrepancies were found: the button label read "Preview" instead of "See Preview", and the section label showed only the preset name with no card count. Both were corrected.
+
+**`deck-card__thumbs` overflow.** On desktop at wide viewports, the Front column's side-actions (Edit + Replace + DL) were wider than the column's available flex space, causing the contents of the `.deck-card` to bleed past the card border. Root cause: `.deck-card__thumb-col` had `flex: 1` but no `min-width: 0`, so flexbox couldn't shrink the column below its content size. Fix: `min-width: 0` on `.deck-card__thumb-col` and `flex-wrap: wrap; justify-content: center` on `.deck-card__side-actions` so buttons wrap gracefully when columns are narrow.
+
+### MAT-431 — Figma section-label component
+
+Figma node 1-168 defines a richer section label than the plain `deck-section__label` span: a dark pill containing a miniature sheet grid icon on the left and the paper name in 16px semibold uppercase on the right.
+
+**`SheetIcon` component.** Rather than using Figma's localhost-served SVG assets (which only work during design sessions), the icon is drawn programmatically as an inline `<svg>`:
+
+```tsx
+function SheetIcon({ cols, rows }: { cols: number; rows: number }) {
+  // computes cell dimensions from inner bounds, renders paper outline rect
+  // + N×M card rectangles with 0.5px radius
+}
+```
+
+The component derives slot dimensions from `preset.cols` / `preset.rows`, so switching presets (3×3 for letter, 1×2 for 4×6, 2×2 for 5×7-4up) automatically renders the correct grid without any additional variants.
+
+**`DeckPaperLabel` component.** Wraps the icon and a name span. A `PRESET_DIMS` lookup provides human-readable size strings (`8.5×11"`, `210×297mm`, `4×6"`, `5×7"`). In single-deck mode, `DeckPaperLabel` replaces the `deck-section__label` span; multi-deck mode keeps the plain "Sheet N" text.
+
+### Full header bar per Figma node 4-222
+
+Node 4-222 shows the complete header bar at full scale. Key changes from the node 1-168 implementation:
+
+**Label text inline.** The previous component had a separate dimensions column (stacked 8.5 / × / 11 in tiny text). The 4-222 design drops that column entirely and folds the dimensions into the label string: `{preset.label} {dims} ({preset.nUp} cards)` — e.g. "US LETTER 8.5×11" (9 CARDS)". `text-transform: uppercase` on the name span handles capitalisation so the JSX stays lowercase.
+
+**Dark pill header.** `.deck-section__header` gained `background: #0d0818; border-radius: 6px; padding: 8px 12px`. All child text colors updated to white / rgba(255,255,255,x). The "Remove ×" button (multi-deck mode) was updated from `var(--foreground-muted)` to `rgba(255,255,255,0.55)` for legibility on the dark surface.
+
+**Button restyling.** The two header buttons were changed from `btn--ghost` to purpose-specific classes:
+- `.deck-section__preview-btn`: lavender background (`#edd9ff`), 1px pink border, dark text — matches Figma's outlined-primary style
+- `.deck-section__paper-size-btn`: solid primary pink, white text — standard primary button
+
+**Responsive wrap.** `flex-wrap: wrap` and a two-value gap (`12px 32px`) let the button group drop to a second line on narrow viewports without any media query. At 1280px the bar is single-line; at 540px the buttons wrap below the label, still inside the dark pill.
+
+### Desktop upload zone
+
+On desktop, once a card exists, the home-screen `<ImageUpload>` disappears and there was no way to add more images without knowing to look for the mobile deck-bar. An `<ImageUpload>` is now rendered after `deck-actions--desktop`, wrapped in a `div.deck-upload` that is hidden on `(pointer: coarse)` devices via the existing media query rule. The upload zone only appears when `project.decks.some(d => deckTotal(d) < nUp)` — i.e. at least one deck still has open slots.
+
+## 2026-06-19 — Mobile layout fixes, fade label, paper size modal redesign (MAT-432–434)
+
+### MAT-432 — Deck bar and crop controls on mobile/tablet
+
+Two layout regressions on touch devices, fixed together.
+
+**Deck bar download button.** `.deck-bar__download` had `flex-shrink: 0`, so when the deck was full (no "Add image" button beside it) the download button sat narrow and left-aligned instead of filling the bar. Fix: `flex: 1` + `min-height: 44px` — button now spans the full bar width whether or not the add button is present.
+
+**Crop controls overflow.** The Background control row packed swatch + eyedropper + hex input + fade slider + value into a single `control-row`. On a 375 px phone with 24 px app padding and 16 px controls padding, the available inner width is ~295 px — tight enough for the fade slider to go below its minimum width and overflow. Fix: the fade slider was extracted into its own `control-group` row (see MAT-433 below).
+
+### MAT-433 — Fade slider label
+
+The fade `<input type="range">` had an `id="crop-fade"` but no matching `<label>`. Separating it into its own `control-group` in `CropEditor.tsx` gave it a proper `<label htmlFor="crop-fade">Fade</label>` for free — same change, two problems solved.
+
+### MAT-434 — Paper size modal redesign
+
+**First pass.** The paper size modal showed only a horizontal `paper-size-toggle` row of plain text buttons. Added the current preset as a `DeckPaperLabel` pill above the buttons so users could see what they were switching *from*.
+
+**Second pass (same session).** Replaced the toggle row entirely with a vertical list of `DeckPaperLabel` buttons — one per preset, full-width, dark-pill background, pink border on the active option. The "current" header section became redundant (the active border makes it self-evident) and was removed. Old `.paper-size-toggle` / `.paper-size-btn` CSS deleted.
+
+**Label cleanup.** For the four n-up photo paper presets, `DeckPaperLabel` was rendering the full `preset.label + dims` string — e.g. "4×6 — 2-up 4×6" (2 cards)" — where the sheet size appears twice. A one-line guard (`isNUp = preset.label.toLowerCase().includes('-up')`) makes those presets show only the dims: "4×6" (2 cards)". Letter and A4 labels are unchanged.
+
+---
+
 ## 2026-06-17 — Photo paper print layouts and multi-deck (MAT-394–401)
 
 The letter/A4 flow was always a batch job: 9 cards, one sheet, send to printer. The next category of user is someone with a photo paper printer — an Epson ET-8550 or similar — who wants to print one or two cards at a time on 4×6 or 5×7 stock. The constraints are completely different: smaller sheet, no 9-up grid, manual rear-feeder duplex, tight registration requirements. Seven tickets.

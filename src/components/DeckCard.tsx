@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Card } from '../models/card'
+import { Modal } from './Modal'
 import './DeckCard.css'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -47,30 +48,25 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
 
   return (
     <div className={`deck-card${removing ? ' deck-card--removing' : ''}`}>
-      {confirmingRemove ? (
-        <div className="deck-card__remove-confirm">
-          <button
-            className="deck-card__remove-yes"
-            onClick={handleRemove}
-            title="Confirm removal"
-            aria-label="Confirm removal"
-          >✓</button>
-          <button
-            className="deck-card__remove-no"
-            onClick={() => setConfirmingRemove(false)}
-            title="Cancel"
-            aria-label="Cancel removal"
-          >✕</button>
-        </div>
-      ) : (
-        <button
-          className="deck-card__remove"
-          onClick={() => setConfirmingRemove(true)}
-          title="Remove card"
-          aria-label="Remove card"
-        >
-          ×
-        </button>
+      <button
+        className="deck-card__remove"
+        onClick={() => setConfirmingRemove(true)}
+        title="Remove card"
+        aria-label="Remove card"
+      >
+        <svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M1 3.5h11M4.5 3.5V2.5A.5.5 0 0 1 5 2h3a.5.5 0 0 1 .5.5v1M10.5 3.5l-.65 8a.5.5 0 0 1-.5.45H3.65a.5.5 0 0 1-.5-.45l-.65-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {confirmingRemove && (
+        <Modal onClose={() => setConfirmingRemove(false)}>
+          <p className="deck-card__remove-prompt">Remove this card?</p>
+          <div className="deck-card__remove-actions">
+            <button className="btn btn--primary deck-card__remove-yes" onClick={handleRemove}>Remove</button>
+            <button className="btn btn--ghost deck-card__remove-no" onClick={() => setConfirmingRemove(false)}>Cancel</button>
+          </div>
+        </Modal>
       )}
 
       <div className="deck-card__thumbs">
