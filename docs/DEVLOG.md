@@ -182,6 +182,28 @@ The fade `<input type="range">` had an `id="crop-fade"` but no matching `<label>
 
 ---
 
+## 2026-06-19 — Ticket triage and skip link (MAT-395–397, MAT-410, MAT-413)
+
+### MAT-395, MAT-396, MAT-397 — Already done
+
+These three tickets described the geometry engine and PDF builder for photo paper presets. All three were already fully implemented in a prior session as part of the print-preset work — `src/utils/printLayout.ts` (exports `layout()` and `maxBleed()`), `src/utils/printPdf.ts` (exports `buildPrintPdf()`), and the `bleedMm` parameter on `getCroppedDataUrl` in `src/utils/cropImage.ts`. Marked Done in Linear with no code changes.
+
+### MAT-413 — Already done
+
+The ticket asked for two things: disable the eyedropper button in browsers that don't support the API, and catch `AbortError` (user cancelled) silently. Both were already in `CropEditor.tsx` — `hasEyeDropper` (`'EyeDropper' in window`, line 53) gates the button render so it's hidden entirely in Firefox/Safari, and the `catch {}` block at line 191 silently swallows all errors including `AbortError`. Marked Done with no code changes.
+
+### MAT-410 — Skip link for keyboard users
+
+No skip link existed, requiring keyboard users to Tab through the entire `AppHeader` on every step transition before reaching main content (WCAG 2.4.1 — bypass blocks).
+
+**`index.html`:** Added `<a href="#main-content" class="skip-link">Skip to main content</a>` as the first child of `<body>`, before `<div id="root">`.
+
+**`src/App.tsx`:** Added `id="main-content"` to all six `<main>` elements across the app's render branches (five identical `<main className="app-main">` instances replaced in one pass, plus the dynamic home-screen `<main className={...}>` separately).
+
+**`src/index.css`:** Added `.skip-link` / `.skip-link:focus` styles at the top of the file. The link is clipped off-screen (`left: -9999px`, 1×1 px) until focused, then snaps to `position: fixed; top: 1rem; left: 1rem` at `z-index: 9999` — visible as a white pill with dark text, then disappears again once focus moves on.
+
+---
+
 ## 2026-06-17 — Photo paper print layouts and multi-deck (MAT-394–401)
 
 The letter/A4 flow was always a batch job: 9 cards, one sheet, send to printer. The next category of user is someone with a photo paper printer — an Epson ET-8550 or similar — who wants to print one or two cards at a time on 4×6 or 5×7 stock. The constraints are completely different: smaller sheet, no 9-up grid, manual rear-feeder duplex, tight registration requirements. Seven tickets.

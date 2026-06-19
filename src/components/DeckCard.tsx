@@ -131,14 +131,16 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
         <div className="deck-card__copies">
           <button
             className="copies-btn"
+            aria-label="Decrease copies"
             onClick={() => onCopiesChange(copies - 1)}
             disabled={copies <= 1}
           >
             −
           </button>
-          <span className="copies-count">{copies}</span>
+          <span className="copies-count" aria-live="polite" aria-atomic="true">{copies}</span>
           <button
             className="copies-btn"
+            aria-label="Increase copies"
             onClick={() => onCopiesChange(copies + 1)}
             disabled={copies >= maxCopies}
           >

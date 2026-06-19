@@ -381,7 +381,7 @@ function App() {
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
-        <main className="app-main">
+        <main id="main-content" className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
             label={step.editingPending ? 'Edit front' : 'Step 1 of 2 — Crop the front'}
@@ -402,7 +402,7 @@ function App() {
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
-        <main className="app-main">
+        <main id="main-content" className="app-main">
           <div className="upload-back">
             <div className="upload-back__preview">
               <div className="upload-back__thumb">
@@ -491,7 +491,7 @@ function App() {
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
-        <main className="app-main">
+        <main id="main-content" className="app-main">
           <CropEditor
             imageSrc={step.imageSrc}
             label="Step 2 of 2 — Crop the back"
@@ -508,7 +508,7 @@ function App() {
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
-        <main className="app-main">
+        <main id="main-content" className="app-main">
           <CropEditor
             imageSrc={editStep.imageSrc}
             label={`Edit ${editStep.side}`}
@@ -534,7 +534,7 @@ function App() {
     return (
       <div className="app">
         <AppHeader onHome={handleGoHome} />
-        <main className="app-main">
+        <main id="main-content" className="app-main">
           <div className="back-scope">
             <div className="back-scope__thumb">
               <img src={step.dataUrl} alt="New back" />
@@ -573,7 +573,7 @@ function App() {
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
 
-      <main className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
+      <main id="main-content" className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
 
         {anyCards && (
           <div className="deck-list__label">
