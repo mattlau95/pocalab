@@ -444,6 +444,16 @@
   margin: 0;
 }
 
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .kofi-btn {
   margin-left: auto;
   padding: 5px 14px;
@@ -510,6 +520,30 @@
   pointer-events: none;
   white-space: nowrap;
   z-index: 30;
+}
+
+.toast--error {
+  background: var(--destructive);
+  border-radius: 8px;
+  white-space: normal;
+  max-width: 360px;
+  text-align: center;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.toast__dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .back-scope {

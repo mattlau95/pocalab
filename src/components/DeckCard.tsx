@@ -79,9 +79,10 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
             <button
               className="deck-card__edit"
               onClick={() => card.frontSrc ? onReEditSide('front') : frontInputRef.current?.click()}
+              aria-label="Edit front image"
             >Edit</button>
             {card.frontSrc && (
-              <button className="deck-card__replace" onClick={() => frontInputRef.current?.click()} title="Upload a new image">Replace</button>
+              <button className="deck-card__replace" onClick={() => frontInputRef.current?.click()} title="Upload a new image" aria-label="Replace front image">Replace</button>
             )}
             <button className="deck-card__dl" onClick={() => downloadSide(card.front, 'front')} title="Download image" aria-label="Download front image">
               <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -107,9 +108,10 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
             <button
               className="deck-card__edit"
               onClick={() => card.backSrc ? onReEditSide('back') : backInputRef.current?.click()}
+              aria-label="Edit back image"
             >Edit</button>
             {card.backSrc && (
-              <button className="deck-card__replace" onClick={() => backInputRef.current?.click()} title="Upload a new image">Replace</button>
+              <button className="deck-card__replace" onClick={() => backInputRef.current?.click()} title="Upload a new image" aria-label="Replace back image">Replace</button>
             )}
             <button className="deck-card__dl" onClick={() => downloadSide(card.back, 'back')} title="Download image" aria-label="Download back image">
               <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

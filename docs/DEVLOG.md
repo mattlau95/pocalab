@@ -48,6 +48,43 @@ This series will cover locking the print spec and why those numbers are what the
 
 ---
 
+## 2026-06-19 — Accessibility quick wins (MAT-408, MAT-412, MAT-414, MAT-417)
+
+Four P1/P2 quick wins from the June 18 UX audit, all targeting screen reader support and error recovery.
+
+### MAT-408 — Aria-labels on icon-only buttons
+
+Several buttons announced themselves to screen readers as just "button" with no context. `title` attributes were present on some but aren't a reliable accessible name source.
+
+Fixed across two files:
+
+- **`CropEditor.tsx`** — `aria-label` added to rotate left/right, zoom in/out, eye dropper, and grid toggle. The grid toggle already had `aria-pressed`; that was kept alongside the new label.
+- **`DeckCard.tsx`** — Edit and Replace buttons have visible text but no front/back distinction. With two "Edit" buttons on screen (one per side), a screen reader user had no way to know which was which. `aria-label="Edit front image"` / `aria-label="Edit back image"` (and equivalents for Replace) resolves the ambiguity.
+
+### MAT-412 — Surface localStorage write failures with a toast
+
+`useProject.ts` silently swallowed all `localStorage.setItem` errors. If storage was full or unavailable, the project quietly stopped persisting — the user would assume their work was saved when it wasn't.
+
+The catch block now sets a `storageWriteError` string exposed from the hook. A `useRef` flag prevents the same error from firing on every project update; it shows at most once per session. `App.tsx` watches `storageWriteError` via `useEffect` and populates a `storageToast` state when it fires.
+
+The storage toast renders as `.toast--error` — a persistent variant (no auto-dismiss) with a dismiss button, styled in red against the existing green info toast. It uses `role="alert"` and `aria-live="assertive"` so screen readers announce it immediately.
+
+### MAT-414 — Retry button on PDF export error
+
+When PDF generation failed, the error message appeared with no recovery path — users had to mentally note the error, dismiss it, and find the export button themselves.
+
+A new `exportErrorDeckIndex` state tracks which deck triggered the failure. Both error locations (desktop `.deck-actions__error` and mobile `.deck-bar__error`) now render an inline "Try again" button that clears the error and re-calls `handleExport(exportErrorDeckIndex ?? 0)`. For `handleExportAll` failures the index is set to `null`, so retry falls back to deck 0 (all-sheets export has its own button anyway).
+
+The button uses a new `.link-button` utility class — unstyled button that inherits font and color, underlined — so it reads as inline text rather than a separate control.
+
+### MAT-417 — `aria-busy` on export area during PDF generation
+
+During export, buttons disabled and label changed to "Generating…" but the containers carried no ARIA state. Screen readers relying on region announcements couldn't detect that the area was updating.
+
+`aria-busy={exporting}` added to both `.deck-actions--desktop` and `.deck-bar`. One-line change; no visual effect.
+
+---
+
 ## 2026-06-19 — Paper size switching bugs (MAT-394, MAT-436, MAT-437)
 
 ### MAT-437 — Consolidate cards when switching to a larger-nUp preset

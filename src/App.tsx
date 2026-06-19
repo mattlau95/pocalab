@@ -100,15 +100,17 @@ type Step =
   | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[]; deckIndex: number }
 
 function App() {
-  const { project, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
+  const { project, storageWriteError, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
   const nUp = project.preset.nUp
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
   const [cardAdded, setCardAdded] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [exportErrorDeckIndex, setExportErrorDeckIndex] = useState<number | null>(null)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
   const [splitToast, setSplitToast] = useState<string | null>(null)
+  const [storageToast, setStorageToast] = useState<string | null>(null)
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
   const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
   const prevDeckCount = useRef(project.decks.length)
@@ -131,6 +133,10 @@ function App() {
     justSwitchedPreset.current = false
     prevDeckCount.current = project.decks.length
   }, [project.decks.length])
+
+  useEffect(() => {
+    if (storageWriteError) setStorageToast(storageWriteError)
+  }, [storageWriteError])
 
   function firstAvailableDeck() {
     return Math.max(0, project.decks.findIndex(d => deckTotal(d) < nUp))
@@ -164,6 +170,7 @@ function App() {
       setShowFeedbackPrompt(true)
     } catch {
       setExportError('PDF generation failed — please try again.')
+      setExportErrorDeckIndex(deckIndex)
     } finally {
       setExporting(false)
     }
@@ -188,6 +195,7 @@ function App() {
       setShowFeedbackPrompt(true)
     } catch {
       setExportError('PDF generation failed — please try again.')
+      setExportErrorDeckIndex(null)
     } finally {
       setExporting(false)
     }
@@ -656,7 +664,7 @@ function App() {
         )}
 
         {anyCards && (
-          <div className="deck-actions deck-actions--desktop">
+          <div className="deck-actions deck-actions--desktop" aria-busy={exporting}>
             {isPhotoPaper && project.preset.id === '5x7-4up' && (
               <p className="deck-actions__hint">Tight layout — near-perfect registration required.</p>
             )}
@@ -680,7 +688,14 @@ function App() {
                 </button>
               )}
             </div>
-            {exportError && <p className="deck-actions__error">{exportError}</p>}
+            {exportError && (
+              <p className="deck-actions__error">
+                {exportError}{' '}
+                <button className="link-button" onClick={() => { setExportError(null); handleExport(exportErrorDeckIndex ?? 0) }}>
+                  Try again
+                </button>
+              </p>
+            )}
           </div>
         )}
 
@@ -691,8 +706,15 @@ function App() {
         )}
 
         {anyCards && (
-          <div className="deck-bar">
-            {exportError && <p className="deck-bar__error">{exportError}</p>}
+          <div className="deck-bar" aria-busy={exporting}>
+            {exportError && (
+              <p className="deck-bar__error">
+                {exportError}{' '}
+                <button className="link-button" onClick={() => { setExportError(null); handleExport(exportErrorDeckIndex ?? 0) }}>
+                  Try again
+                </button>
+              </p>
+            )}
             {firstAvailableDeck() >= 0 && project.decks[firstAvailableDeck()] && deckTotal(project.decks[firstAvailableDeck()]) < nUp && (
               <label className="deck-bar__add">
                 + Add image
@@ -724,6 +746,13 @@ function App() {
       {(cardAdded || splitToast) && (
         <div className="toast" role="status" aria-live="polite">
           {splitToast ?? 'Card added to deck'}
+        </div>
+      )}
+
+      {storageToast && (
+        <div className="toast toast--error" role="alert" aria-live="assertive">
+          {storageToast}
+          <button className="toast__dismiss" onClick={() => setStorageToast(null)} aria-label="Dismiss">×</button>
         </div>
       )}
 

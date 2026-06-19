@@ -1,2 +1,3 @@
 # Inbox
-- replace the back examples in crop editor for back with these webp, shrunk down to the same size as the current examples. label them underneath with small text with the text at the end of the file name after the "_"
+- replace the back examples in crop editor for back with these webp in this subfolder "C:\Users\mattl\photocard-generator\public\photocard-back-examples", shrunk down to the same size as the current examples. label them underneath with small text with the text at the end of the file name after the "_"
+- replace the front examples in crop editor for front with these webp in this subfolder "C:\Users\mattl\photocard-generator\public\photocard-front-examples", shrunk down to the same size as the current examples. label them underneath with small text with the text at the end of the file name after the "_"

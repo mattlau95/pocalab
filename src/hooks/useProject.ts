@@ -1,4 +1,4 @@
-import { useReducer, useEffect } from 'react'
+import { useReducer, useEffect, useRef, useState } from 'react'
 import { createDeck, createProject, type Deck, type Project } from '../models/deck'
 import { PRESETS, DEFAULT_PRESET, type PrintPreset } from '../models/preset'
 import type { Card } from '../models/card'
@@ -173,6 +173,8 @@ function loadProject(): Project {
 
 export function useProject() {
   const [project, dispatch] = useReducer(projectReducer, undefined, loadProject)
+  const [storageWriteError, setStorageWriteError] = useState<string | null>(null)
+  const hasShownStorageError = useRef(false)
 
   useEffect(() => {
     try {
@@ -184,7 +186,12 @@ export function useProject() {
         })),
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
-    } catch { /* storage full — silently skip */ }
+    } catch {
+      if (!hasShownStorageError.current) {
+        hasShownStorageError.current = true
+        setStorageWriteError("Couldn't save — storage may be full. Export your PDF to avoid losing work.")
+      }
+    }
   }, [project])
 
   function revokeCard(card: Card) {
@@ -194,6 +201,7 @@ export function useProject() {
 
   return {
     project,
+    storageWriteError,
 
     setPreset: (preset: PrintPreset) => dispatch({ type: 'SET_PRESET', preset }),
 

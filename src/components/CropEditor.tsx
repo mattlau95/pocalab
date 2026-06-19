@@ -271,7 +271,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
         <div className="control-group">
           <label className="control-label" htmlFor="crop-rotate">Rotate</label>
           <div className="control-row">
-            <button className="ctrl-btn" onClick={() => rotate(-90)} title="Rotate 90° left">↺</button>
+            <button className="ctrl-btn" onClick={() => rotate(-90)} title="Rotate 90° left" aria-label="Rotate left 90°">↺</button>
             <input
               id="crop-rotate"
               type="range"
@@ -285,7 +285,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               }}
               className="ctrl-slider"
             />
-            <button className="ctrl-btn" onClick={() => rotate(90)} title="Rotate 90° right">↻</button>
+            <button className="ctrl-btn" onClick={() => rotate(90)} title="Rotate 90° right" aria-label="Rotate right 90°">↻</button>
             <span className="ctrl-value">{Math.round(displayRotation)}°</span>
           </div>
         </div>
@@ -293,7 +293,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
         <div className="control-group">
           <label className="control-label" htmlFor="crop-zoom">Size</label>
           <div className="control-row">
-            <button className="ctrl-btn" onClick={() => stepZoom(-0.1)} disabled={zoom <= MIN_ZOOM}>−</button>
+            <button className="ctrl-btn" onClick={() => stepZoom(-0.1)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out">−</button>
             <input
               id="crop-zoom"
               type="range"
@@ -305,7 +305,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               onPointerUp={(e) => pushHistory({ crop, zoom: +e.currentTarget.value, rotation, bgColor, fade })}
               className="ctrl-slider"
             />
-            <button className="ctrl-btn" onClick={() => stepZoom(0.1)} disabled={zoom >= MAX_ZOOM}>+</button>
+            <button className="ctrl-btn" onClick={() => stepZoom(0.1)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
             <span className="ctrl-value">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
@@ -326,7 +326,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               />
             </div>
             {hasEyeDropper && (
-              <button className="ctrl-btn" onClick={handleEyeDropper} title="Sample color from image">
+              <button className="ctrl-btn" onClick={handleEyeDropper} title="Sample color from image" aria-label="Pick color from image">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 22l4-4M18.37 2.63a2.12 2.12 0 013 3L8 19l-6 1 1-6L18.37 2.63z" />
                 </svg>
@@ -383,6 +383,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
             className={`ctrl-pill${showGrid ? ' ctrl-pill--on' : ''}`}
             onClick={() => setShowGrid(g => !g)}
             title="Toggle rule-of-thirds grid"
+            aria-label="Toggle grid overlay"
             aria-pressed={showGrid}
           >
             Grid
