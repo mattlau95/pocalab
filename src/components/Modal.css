@@ -20,9 +20,39 @@
   overflow-y: auto;
 }
 
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  min-height: 24px;
+}
+
 .modal__title {
   font-size: 15px;
   font-weight: 600;
   color: var(--foreground);
-  margin-bottom: 16px;
+}
+
+.modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal__close:hover {
+  background: var(--accent);
+  color: var(--foreground);
 }
