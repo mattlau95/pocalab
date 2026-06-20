@@ -15,11 +15,17 @@ import type { Deck } from './models/deck'
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
 const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
 
-const eu = encodeURIComponent
 const EXAMPLE_BACKS = [
-  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><rect width="295" height="445" fill="#0c0818"/><rect x="16" y="16" width="263" height="413" rx="4" fill="none" stroke="#281a46" stroke-width="1.5"/><circle cx="58" cy="88" r="1.5" fill="#3b1f6e"/><circle cx="210" cy="132" r="1" fill="#3b1f6e"/><circle cx="242" cy="68" r="2" fill="#3b1f6e"/><circle cx="110" cy="220" r="1.5" fill="#3b1f6e"/><circle cx="192" cy="312" r="1" fill="#3b1f6e"/><circle cx="48" cy="388" r="2" fill="#3b1f6e"/><circle cx="258" cy="372" r="1.5" fill="#3b1f6e"/></svg>')}`,
-  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ee4897"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><rect width="295" height="445" fill="url(#g)"/><rect x="16" y="16" width="263" height="413" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5"/></svg>')}`,
-  `data:image/svg+xml,${eu('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 295 445"><rect width="295" height="445" fill="#fffbf7"/><rect x="12" y="12" width="271" height="421" rx="6" fill="none" stroke="#f0dcca" stroke-width="2.5"/><rect x="20" y="20" width="255" height="405" rx="4" fill="none" stroke="#f0dcca" stroke-width="1"/></svg>')}`,
+  { src: '/photocard-back-examples/photocard-back-example-1_album.webp',     label: 'album' },
+  { src: '/photocard-back-examples/photocard-back-example-2_logo.webp',      label: 'logo' },
+  { src: '/photocard-back-examples/photocard-back-example-3_signature.webp', label: 'signature' },
+]
+
+const EXAMPLE_FRONTS = [
+  { src: '/photocard-front-examples/photocard-front-example-1-selfie.webp',   label: 'selfie' },
+  { src: '/photocard-front-examples/photocard-front-example-2-portrait.webp', label: 'portrait' },
+  { src: '/photocard-front-examples/photocard-front-example-3-concert.webp',  label: 'concert' },
+  { src: '/photocard-front-examples/photocard-front-example-4-group.webp',    label: 'group' },
 ]
 
 const PRESET_DIMS: Record<string, string> = {
@@ -458,15 +464,13 @@ function App() {
 
               <p className="upload-back__step" style={{ marginBottom: -4 }}>Examples</p>
               <div className="back-gallery">
-                {EXAMPLE_BACKS.map((src, i) => (
-                  <button
-                    key={`eg-${i}`}
-                    className="back-gallery__thumb"
-                    onClick={() => handleUseExistingBack(src)}
-                    title="Use this example back"
-                  >
-                    <img src={src} alt={`Example back ${i + 1}`} />
-                  </button>
+                {EXAMPLE_BACKS.map((item, i) => (
+                  <div key={`eg-${i}`} className="back-gallery-item">
+                    <div className="back-gallery__thumb back-gallery__thumb--static">
+                      <img src={item.src} alt={`Example back: ${item.label}`} />
+                    </div>
+                    <span className="back-gallery-item__label">{item.label}</span>
+                  </div>
                 ))}
               </div>
 
@@ -659,6 +663,18 @@ function App() {
         {!anyCards && (
           <>
             <p className="deck-intro">Build a deck of up to {nUp} photocards — then export as a print-ready PDF.</p>
+            <p className="upload-back__step" style={{ marginBottom: -4 }}>Examples</p>
+            <div className="back-gallery back-gallery--front">
+              {EXAMPLE_FRONTS.map((item, i) => (
+                <div key={`fe-${i}`} className="back-gallery-item">
+                  <div className="back-gallery__thumb back-gallery__thumb--static">
+                    <img src={item.src} alt={`Example front: ${item.label}`} />
+                  </div>
+                  <span className="back-gallery-item__label">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="upload-back__divider">or upload your own</div>
             <ImageUpload onFile={(f) => handleFrontFile(f, 0)} />
           </>
         )}

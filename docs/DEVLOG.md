@@ -507,6 +507,22 @@ Both palettes share the same primary color. The `--primary-muted` value is a sem
 
 ---
 
+## 2026-06-19 — Example image galleries for front and back
+
+The back-upload step previously showed three hard-coded SVG placeholders as "example" backs — abstract pattern tiles with no relationship to real photocard backs. The idle screen (front upload) had no examples at all.
+
+Both are replaced with real WebP images.
+
+**Back examples** — three actual photocard back designs (`album`, `logo`, `signature`) from `public/photocard-back-examples/`. Each thumbnail is labelled with the design type in small muted text. The `EXAMPLE_BACKS` array changed from SVG data URIs to `{ src, label }` objects.
+
+**Front examples** — four front photos (`selfie`, `portrait`, `concert`, `group`) from `public/photocard-front-examples/` added to the idle screen above the upload zone. Thumbnails are 80×120 px (vs the 44×66 px used for backs) to make them more prominent at first glance. The gallery is horizontally centered.
+
+Both galleries are intentionally **non-interactive** — no click handler, no hover highlight, default cursor. They are visual reference only, showing users the kind of image that works well so they can find something similar. The "Previously used" backs gallery in the upload-back step remains fully interactive.
+
+A divider ("or upload your own") separates the front example gallery from the upload zone, matching the pattern already used in the back-upload step. Vertical padding and margin were added around the gallery and upload zone to give the idle screen breathing room.
+
+---
+
 ## 2026-06-13 — SEO and discoverability (MAT-296, MAT-302–304)
 
 A static SPA with no server-rendered HTML is invisible to search crawlers unless you put the content somewhere they can find it. Three approaches layered together:

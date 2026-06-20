@@ -289,6 +289,56 @@
   object-fit: cover;
 }
 
+.back-gallery-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.back-gallery-item__label {
+  font-size: 10px;
+  color: var(--foreground-muted);
+  text-transform: capitalize;
+}
+
+.back-gallery--front {
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.back-gallery--front .back-gallery__thumb {
+  width: 80px;
+  height: 120px;
+}
+
+#main-content > .upload-back__step {
+  text-align: center;
+}
+
+#main-content > .upload-zone {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.back-gallery__thumb--static {
+  cursor: default;
+}
+
+.back-gallery__thumb--static:hover {
+  border-color: var(--border);
+}
+
+#main-content > .back-gallery {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.upload-back__content .back-gallery {
+  padding: 0 4px;
+}
+
 .upload-back__divider {
   display: flex;
   align-items: center;
