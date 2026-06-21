@@ -46,6 +46,49 @@ That's enough to earn a devlog.
 
 This series will cover locking the print spec and why those numbers are what they are, the architecture decisions for a purely client-side app, building the crop tool, the PDF generation pipeline, and the calibration system. Entry one is below.
 
+### From ~45 minutes to ~12
+
+A single sheet of 9 double-sided photocards used to take me around
+**45 minutes** in Canva. With pocalab it's about **12** — roughly
+**70% faster**, or **~30 minutes saved per sheet**.
+
+And almost none of that was the design itself. It was the mechanical
+busywork around it:
+
+- **No more gluing.** My old setup couldn't hold double-sided
+  alignment, so I printed fronts and backs on separate sheets and glued
+  them onto cardstock — 15–20 minutes of adhesive, careful alignment,
+  and bubbles, every single sheet. pocalab's exact sizing and front/back
+  registration let me print straight onto cardstock, double-sided, and
+  cut. That whole step is gone.
+- **Set the back once.** Canva made me place all nine backs by hand,
+  even when they were identical. pocalab reuses one back across the
+  entire deck.
+- **No mirroring math.** Getting fronts and backs to line up after a
+  duplex flip used to take real brainpower — and was my most common
+  cause of a wasted sheet. pocalab handles the mirroring automatically.
+
+At one sheet a week, that's roughly **26 hours a year** back — time that
+goes into shooting and collecting instead of fighting a layout.
+
+---
+
+## 2026-06-21 — Deck sidebar layout
+
+The deck section on desktop was a flat column: label row, then the card grid below it, with `SheetPreview` crammed into the top-right of the header. On a wide viewport the grid took the full width and the preview sat at a small fixed size with nothing alongside it — wasted real estate, and the preview disappeared above the fold as soon as any cards were added.
+
+Refactored to a two-column CSS grid:
+
+```
+.deck-section  { grid-template-columns: 1fr auto; }
+.deck-section__body    ← card grid + add/full controls
+.deck-section__sidebar ← label + remove btn + paper toggle + SheetPreview
+```
+
+The sidebar is `position: sticky; top: 24px` so it tracks the viewport as the card grid grows. The paper-size-toggle moved from the desktop action bar into the sidebar — it's now right above the preview it controls, which makes the coupling obvious. On mobile the sidebar collapses back to a flex row (same as the old header), and the paper toggle is hidden there (the deck-bar still owns it on touch).
+
+Also: `upload-zone__prompt-link` color changed from `--primary` to `--primary-hover` — the primary pink was too loud as an inline link against the upload zone background.
+
 ---
 
 ## 2026-06-19 — Accessibility quick wins (MAT-408, MAT-412, MAT-414, MAT-417)

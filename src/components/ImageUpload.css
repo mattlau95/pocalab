@@ -30,7 +30,7 @@
 }
 
 .upload-zone__prompt-link {
-  color: var(--primary);
+  color: var(--primary-hover);
   text-decoration: underline;
 }
 

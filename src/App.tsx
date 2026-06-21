@@ -118,7 +118,6 @@ function App() {
   const [splitToast, setSplitToast] = useState<string | null>(null)
   const [storageToast, setStorageToast] = useState<string | null>(null)
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
-  const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
   const prevDeckCount = useRef(project.decks.length)
   const justSwitchedPreset = useRef(false)
 
@@ -599,57 +598,93 @@ function App() {
           const isFull = dTotal >= nUp
           return (
             <div key={di} className="deck-section">
-              <div className="deck-section__header">
-                {project.decks.length > 1 && (
-                  <span className="deck-section__label">{`Sheet ${di + 1}`}</span>
+
+              {/* LEFT — card grid and add/full controls */}
+              <div className="deck-section__body">
+                {deck.cards.length > 0 && (
+                  <div className="deck-grid">
+                    {deck.cards.map((card) => (
+                      <DeckCard
+                        key={card.id}
+                        card={card}
+                        copies={deck.copies[card.id] ?? 1}
+                        maxCopies={nUp - dTotal + (deck.copies[card.id] ?? 1)}
+                        hideCopies={isPhotoPaper}
+                        onCopiesChange={(count) => setCopies(di, card.id, count)}
+                        onRemove={() => removeCard(di, card.id)}
+                        onEditSide={(side, file) => handleEditFile(card.id, side, file, di)}
+                        onReEditSide={(side) => handleReEditSide(card.id, side, di)}
+                        onMoveTo={isPhotoPaper && project.decks.length > 1 ? (toDi) => moveCard(di, toDi, card.id) : undefined}
+                        deckCount={project.decks.length}
+                        deckIndex={di}
+                      />
+                    ))}
+                  </div>
                 )}
-                <div className="deck-section__header-right">
-                  <button
-                    className="btn deck-section__preview-btn"
-                    onClick={() => setPreviewDeckIndex(di)}
-                  >
-                    See Preview
-                  </button>
-                  <button
-                    className="btn deck-section__paper-size-btn"
-                    onClick={() => setShowPaperSizeModal(true)}
-                  >
-                    Change Paper Size
-                  </button>
-                  {project.decks.length > 1 && (
-                    <button
-                      className="deck-section__remove"
-                      onClick={() => handleRemoveDeck(di)}
-                    >
-                      Remove ×
-                    </button>
-                  )}
-                </div>
+
+                {!isFull && (
+                  <label className="deck-section__add">
+                    + Add image
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, di) }}
+                      hidden
+                    />
+                  </label>
+                )}
+
+                {isFull && deck.cards.length > 0 && (
+                  <p className="deck-full">
+                    {isPhotoPaper
+                      ? 'Sheet is full.'
+                      : 'Deck is full — remove a card or reduce copies to add more.'}
+                  </p>
+                )}
               </div>
 
-              {deck.cards.length > 0 && (
-                <div className="deck-grid">
-                  {deck.cards.map((card) => (
-                    <DeckCard
-                      key={card.id}
-                      card={card}
-                      copies={deck.copies[card.id] ?? 1}
-                      maxCopies={nUp - dTotal + (deck.copies[card.id] ?? 1)}
-                      onCopiesChange={(count) => setCopies(di, card.id, count)}
-                      onRemove={() => removeCard(di, card.id)}
-                      onEditSide={(side, file) => handleEditFile(card.id, side, file, di)}
-                      onReEditSide={(side) => handleReEditSide(card.id, side, di)}
-                      onMoveTo={isPhotoPaper && project.decks.length > 1 ? (toDi) => moveCard(di, toDi, card.id) : undefined}
-                      deckCount={project.decks.length}
-                      deckIndex={di}
-                    />
+              {/* RIGHT — sticky sidebar: header → paper selector → preview */}
+              <div className="deck-section__sidebar">
+                <div className="deck-section__header">
+                  <span className="deck-section__label">
+                    {project.decks.length > 1 ? `Sheet ${di + 1}` : project.preset.label}
+                  </span>
+                  <div className="deck-section__header-right">
+                    {deck.cards.length > 0 && (
+                      <button
+                        className="btn deck-section__preview-btn"
+                        onClick={() => setPreviewDeckIndex(di)}
+                      >
+                        See Preview
+                      </button>
+                    )}
+                    {project.decks.length > 1 && (
+                      <button
+                        className="deck-section__remove"
+                        onClick={() => handleRemoveDeck(di)}
+                      >
+                        Remove ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="paper-size-toggle">
+                  {Object.values(PRESETS).map(p => (
+                    <button
+                      key={p.id}
+                      className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
+                      onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
+                    >
+                      {p.label}
+                    </button>
                   ))}
                 </div>
-              )}
+                <SheetPreview
+                  preset={project.preset}
+                  thumbnails={deck.cards.map(c => c.front)}
+                />
+              </div>
 
-              {isFull && deck.cards.length > 0 && (
-                <p className="deck-full">Sheet is full — remove a card or reduce copies to add more.</p>
-              )}
             </div>
           )
         })}
@@ -793,21 +828,6 @@ function App() {
         </Modal>
       )}
 
-      {showPaperSizeModal && (
-        <Modal onClose={() => setShowPaperSizeModal(false)} title="Paper size">
-          <div className="paper-size-options">
-            {Object.values(PRESETS).map(p => (
-              <button
-                key={p.id}
-                className={`paper-size-option${project.preset.id === p.id ? ' paper-size-option--on' : ''}`}
-                onClick={() => { justSwitchedPreset.current = true; setPreset(p); setShowPaperSizeModal(false) }}
-              >
-                <DeckPaperLabel preset={p} />
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }

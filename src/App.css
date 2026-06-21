@@ -82,9 +82,11 @@
   margin-bottom: 20px;
 }
 
-.deck-section__header {
+/* Sidebar: default (mobile) — looks like the old header row */
+.deck-section__sidebar {
   display: flex;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px 32px;
@@ -92,6 +94,51 @@
   background: #0d0818;
   border-radius: 6px;
   padding: 8px 12px;
+}
+
+/* paper-size-toggle is hidden on mobile (deck-bar has it) */
+.deck-section__sidebar .paper-size-toggle {
+  display: none;
+}
+
+.deck-section__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Desktop two-column layout */
+@media (pointer: fine) {
+  .deck-section {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 28px;
+    align-items: start;
+    margin-bottom: 32px;
+  }
+
+  .deck-section__body {
+    min-width: 0;
+  }
+
+  .deck-section__sidebar {
+    position: sticky;
+    top: 24px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .deck-section__sidebar .paper-size-toggle {
+    display: flex;
+  }
+
+  .deck-actions--desktop .paper-size-toggle {
+    display: none;
+  }
 }
 
 .deck-section__label {
