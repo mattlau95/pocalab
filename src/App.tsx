@@ -118,6 +118,7 @@ function App() {
   const [splitToast, setSplitToast] = useState<string | null>(null)
   const [storageToast, setStorageToast] = useState<string | null>(null)
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
+  const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
   const prevDeckCount = useRef(project.decks.length)
   const justSwitchedPreset = useRef(false)
 
@@ -658,6 +659,12 @@ function App() {
                         See Preview
                       </button>
                     )}
+                    <button
+                      className="btn deck-section__paper-size-btn"
+                      onClick={() => setShowPaperSizeModal(true)}
+                    >
+                      Change Paper Size
+                    </button>
                     {project.decks.length > 1 && (
                       <button
                         className="deck-section__remove"
@@ -824,6 +831,22 @@ function App() {
                 thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.back ?? project.decks[previewDeckIndex!]?.sharedBack ?? null) ?? []}
               />
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {showPaperSizeModal && (
+        <Modal onClose={() => setShowPaperSizeModal(false)} title="Paper size">
+          <div className="paper-size-options">
+            {Object.values(PRESETS).map(p => (
+              <button
+                key={p.id}
+                className={`paper-size-option${project.preset.id === p.id ? ' paper-size-option--on' : ''}`}
+                onClick={() => { justSwitchedPreset.current = true; setPreset(p); setShowPaperSizeModal(false) }}
+              >
+                <DeckPaperLabel preset={p} />
+              </button>
+            ))}
           </div>
         </Modal>
       )}
