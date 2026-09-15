@@ -30,6 +30,10 @@
   --border: #F0DCCA;
   --primary: #EE4897;
   --primary-hover: #D0307F;
+  /* Filled controls with white text need >= 4.5:1 (WCAG 1.4.3);
+     #EE4897 is 3.49:1 against white, #D0307F is 4.76:1, #B52A6F is 5.96:1. */
+  --primary-fill: #D0307F;
+  --primary-fill-hover: #B52A6F;
   --primary-foreground: #fff;
   --primary-muted: rgba(238, 72, 151, 0.08);
   --destructive: #ef4444;

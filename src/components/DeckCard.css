@@ -163,7 +163,7 @@
 }
 
 .copies-btn:hover:not(:disabled) {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border-color: var(--primary);
 }
@@ -267,7 +267,7 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border: none;
   cursor: pointer;

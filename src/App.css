@@ -189,7 +189,7 @@
   padding: 2px 12px;
   height: 32px;
   border-radius: 4px;
-  background: var(--primary);
+  background: var(--primary-fill);
   border: none;
   color: white;
 }
@@ -608,7 +608,7 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   font-size: 14px;
   font-weight: 500;
@@ -727,7 +727,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--primary);
+    background: var(--primary-fill);
     color: var(--primary-foreground);
     border-radius: 8px;
     font-size: 15px;
