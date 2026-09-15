@@ -34,6 +34,9 @@
      #EE4897 is 3.49:1 against white, #D0307F is 4.76:1, #B52A6F is 5.96:1. */
   --primary-fill: #D0307F;
   --primary-fill-hover: #B52A6F;
+  /* Pink used *as text* on the page background: #D0307F is 4.62:1 on cream,
+     #EE4897 is 5.65:1 on the dark background; the dark theme swaps it. */
+  --primary-text: #D0307F;
   --primary-foreground: #fff;
   --primary-muted: rgba(238, 72, 151, 0.08);
   /* Error text on the cream background: #ef4444 is 3.65:1, #B91C1C is 6.28:1.
@@ -66,6 +69,7 @@
     --primary-hover: #D0307F;
     --primary-foreground: #fff;
     --primary-muted: rgba(238, 72, 151, 0.12);
+    --primary-text: #EE4897; /* 5.65:1 on the dark background */
     --destructive: #ef4444; /* 5.25:1 on the dark background */
   }
 }
