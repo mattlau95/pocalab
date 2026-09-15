@@ -96,11 +96,6 @@
   padding: 8px 12px;
 }
 
-/* paper-size-toggle is hidden on mobile (deck-bar has it) */
-.deck-section__sidebar .paper-size-toggle {
-  display: none;
-}
-
 .deck-section__header {
   display: flex;
   flex-direction: column;
@@ -130,14 +125,6 @@
     justify-content: flex-start;
     gap: 12px;
     margin-bottom: 0;
-  }
-
-  .deck-section__sidebar .paper-size-toggle {
-    display: flex;
-  }
-
-  .deck-actions--desktop .paper-size-toggle {
-    display: none;
   }
 }
 

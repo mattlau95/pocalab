@@ -675,17 +675,6 @@ function App() {
                     )}
                   </div>
                 </div>
-                <div className="paper-size-toggle">
-                  {Object.values(PRESETS).map(p => (
-                    <button
-                      key={p.id}
-                      className={`paper-size-btn${project.preset.id === p.id ? ' paper-size-btn--on' : ''}`}
-                      onClick={() => { justSwitchedPreset.current = true; setPreset(p) }}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
                 <SheetPreview
                   preset={project.preset}
                   thumbnails={deck.cards.map(c => c.front)}
