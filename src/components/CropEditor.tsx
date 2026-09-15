@@ -205,6 +205,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
 
       <div
         className="crop-viewport"
+        role="group"
         style={{ background: bgColor }}
         ref={viewportRef}
         tabIndex={0}
