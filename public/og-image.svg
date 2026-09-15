@@ -38,5 +38,5 @@
   <text x="553" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="17" fill="#BBA8D4" text-anchor="middle">US Letter + A4</text>
 
   <!-- URL hint -->
-  <text x="80" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#BBA8D4" opacity="0.45">photocard-generator.vercel.app</text>
+  <text x="80" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#BBA8D4" opacity="0.45">pocalab.app</text>
 </svg>
