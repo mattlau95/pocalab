@@ -350,6 +350,12 @@
   justify-content: flex-end;
 }
 
+/* "Replace image" is a label around a visually-hidden file input. */
+.crop-actions label:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .btn {
   padding: 8px 20px;
   border-radius: 6px;

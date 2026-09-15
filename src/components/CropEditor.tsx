@@ -428,7 +428,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) { onReplace(f); e.target.value = '' } }}
-              hidden
+              className="visually-hidden"
             />
           </label>
         )}

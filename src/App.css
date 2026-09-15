@@ -229,6 +229,13 @@
   background: var(--primary-muted);
 }
 
+/* "+ Add image" labels wrap a visually-hidden file input; show focus on the label. */
+.deck-section__add:focus-within,
+.deck-bar__add:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .deck-add-sheet {
   margin-top: 4px;
   margin-bottom: 16px;

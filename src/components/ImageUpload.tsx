@@ -45,7 +45,7 @@ export function ImageUpload({ onFile }: Props) {
         type="file"
         accept={ACCEPTED_TYPES.join(',')}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f) }}
-        hidden
+        className="visually-hidden"
       />
       <p className="upload-zone__hint">JPEG · PNG · WebP &nbsp;·&nbsp; max 50 MB</p>
       <p className="upload-zone__hint upload-zone__hint--tip">For best print quality, use images &gt;2 MB — Google Image Search → Tools → Size → Large</p>

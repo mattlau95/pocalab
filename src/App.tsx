@@ -630,7 +630,7 @@ function App() {
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, di) }}
-                      hidden
+                      className="visually-hidden"
                     />
                   </label>
                 )}
@@ -780,7 +780,7 @@ function App() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFrontFile(f, firstAvailableDeck()) }}
-                  hidden
+                  className="visually-hidden"
                 />
               </label>
             )}
