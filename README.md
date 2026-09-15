@@ -91,7 +91,8 @@ src/
 tests/                     # layout geometry tests (node:test)
 docs/
 ├── DEVLOG.md              # build log, session by session
-└── ...                    # plans, audits, notes
+├── audits/                # UX / a11y audit reports, dated
+└── ...                    # plans and notes
 ```
 
 ## Run it
@@ -108,7 +109,7 @@ Deployed on Vercel from `main`.
 
 ## Accessibility
 
-WCAG 2.2 AA is the bar. The repo keeps its audit reports (`audit-*.md`) and the fixes they led to: keyboard-operable crop editor and upload zones, visible focus that is never hidden behind the sticky header or the mobile action bar, AA contrast in both themes, `prefers-reduced-motion`, live regions for the card count and export state, and a skip link.
+WCAG 2.2 AA is the bar. The repo keeps its audit reports (`docs/audits/`) and the fixes they led to: keyboard-operable crop editor and upload zones, visible focus that is never hidden behind the sticky header or the mobile action bar, AA contrast in both themes, `prefers-reduced-motion`, live regions for the card count and export state, and a skip link.
 
 ## More
 

@@ -1,5 +1,5 @@
 # UX Audit Fix Plan — pocalab
-**Based on:** `audit-2026-06-13.md`  
+**Based on:** `audits/audit-2026-06-13.md`  
 **Status:** Ready to implement
 
 ---
