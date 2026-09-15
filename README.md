@@ -37,14 +37,14 @@ A browser can lay images on a page easily. Getting a card to come out of a print
 | Sheet layout geometry, validity check and crop marks (`src/utils/printLayout.ts`, `src/utils/layout.ts`) | `pdf-lib` provides page, image and line primitives; it is loaded lazily on first export |
 | Duplex mirroring and PDF assembly (`src/utils/printPdf.ts`, `src/utils/pdf.ts`) | React 19, TypeScript and Vite |
 | The step state machine that runs crop → back → deck → edit flows (`src/App.tsx`) | |
-| Project model, reducer, localStorage persistence and migration (`src/hooks/useProject.ts`, `src/models/`) | |
+| Project model, reducer, IndexedDB persistence and migration from localStorage (`src/hooks/useProject.ts`, `src/utils/projectStore.ts`, `src/models/`) | |
 | Crop editor UX: undo/redo, keyboard panning, eyedropper, fill-to-bleed, low-resolution warning (`src/components/CropEditor.tsx`) | |
 | Live SVG sheet preview (`src/components/SheetPreview.tsx`) | |
 | Three rounds of WCAG 2.2 AA work, documented in the audits below | |
 
 ## Decisions
 
-- **Client-side only.** No accounts, no onboarding, no infrastructure; the ceiling is localStorage and the Canvas API, which is enough for a deck of cards.
+- **Client-side only.** No accounts, no onboarding, no infrastructure; the ceiling is browser storage and the Canvas API. The project lives in IndexedDB because a deck of 300 DPI cards is well past the localStorage quota.
 - **pdf-lib over jsPDF.** jsPDF's strength is HTML-to-PDF, which is irrelevant here; pdf-lib is TypeScript-native and works in exact point coordinates.
 - **300 DPI floor, 2 mm bleed.** The card is rasterised at 697 × 1051 px and the editor warns when the source cannot supply that many pixels, so soft prints are a known trade-off rather than a surprise.
 - **Long-edge duplex.** Backs are mirrored for the flip that home printers default to; the PDF says so in its margin.
@@ -79,10 +79,11 @@ src/
 │   ├── SheetPreview.tsx   # live SVG preview of the sheet layout
 │   └── Modal.tsx
 ├── hooks/
-│   ├── useProject.ts      # reducer, localStorage persistence, migration
+│   ├── useProject.ts      # reducer, hydration, persistence, migration
 │   └── useBeforeUnload.ts
 ├── models/                # Card, Deck, Project, print presets
 └── utils/
+    ├── projectStore.ts    # IndexedDB read/write of the whole project
     ├── dimensions.ts      # mm ↔ px, card constants (single source of truth)
     ├── cropImage.ts       # 300 DPI rasterisation with rotation and bleed
     ├── printLayout.ts     # n-up geometry and validity check

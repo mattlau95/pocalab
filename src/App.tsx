@@ -106,7 +106,7 @@ type Step =
   | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[]; deckIndex: number }
 
 function App() {
-  const { project, storageWriteError, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
+  const { project, hydrated, storageWriteError, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
   const nUp = project.preset.nUp
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
@@ -389,6 +389,18 @@ function App() {
       URL.revokeObjectURL(step.newSrc)
     }
     setStep({ id: 'idle' })
+  }
+
+  // The saved project is read from IndexedDB asynchronously; render the shell
+  // only until it arrives so the empty first-run screen never flashes over a
+  // deck that is about to appear.
+  if (!hydrated) {
+    return (
+      <div className="app">
+        <AppHeader />
+        <main id="main-content" className="app-main" aria-busy="true" />
+      </div>
+    )
   }
 
   if (step.id === 'crop-front') {
