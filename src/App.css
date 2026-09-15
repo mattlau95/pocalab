@@ -153,7 +153,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: white;
+  color: var(--foreground);
 }
 
 .deck-paper-label__name {
@@ -529,6 +529,11 @@
 
 .paper-size-option:hover {
   border-color: var(--border);
+}
+
+/* The paper-size options sit on a dark surface in both themes */
+.paper-size-option .deck-paper-label {
+  color: #fff;
 }
 
 .paper-size-option--on {
