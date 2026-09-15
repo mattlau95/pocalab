@@ -36,7 +36,11 @@
   --primary-fill-hover: #B52A6F;
   --primary-foreground: #fff;
   --primary-muted: rgba(238, 72, 151, 0.08);
-  --destructive: #ef4444;
+  /* Error text on the cream background: #ef4444 is 3.65:1, #B91C1C is 6.28:1.
+     --destructive-fill backs filled buttons/toasts with white text (6.28:1 in
+     both modes); the dark theme overrides --destructive back to #ef4444. */
+  --destructive: #B91C1C;
+  --destructive-fill: #B91C1C;
   --destructive-muted: rgba(239, 68, 68, 0.08);
   --destructive-border: rgba(239, 68, 68, 0.35);
 
@@ -62,6 +66,7 @@
     --primary-hover: #D0307F;
     --primary-foreground: #fff;
     --primary-muted: rgba(238, 72, 151, 0.12);
+    --destructive: #ef4444; /* 5.25:1 on the dark background */
   }
 }
 

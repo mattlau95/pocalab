@@ -221,8 +221,8 @@
 }
 
 .deck-card__remove-yes {
-  background: var(--destructive) !important;
-  border-color: var(--destructive) !important;
+  background: var(--destructive-fill) !important;
+  border-color: var(--destructive-fill) !important;
   color: #fff !important;
 }
 

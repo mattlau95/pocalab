@@ -620,7 +620,7 @@
 }
 
 .toast--error {
-  background: var(--destructive);
+  background: var(--destructive-fill);
   border-radius: 8px;
   white-space: normal;
   max-width: 360px;
