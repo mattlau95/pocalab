@@ -6,8 +6,8 @@ export type PageSummary = {
   images: [number, number, number, number][]
   // Stroked line segments (crop marks, trim guides).
   lines: number
-  // The decoded content stream with image names normalised: exact drawing
-  // operators and no timestamps, so it is stable across runs.
+  // The decoded content stream with image names normalised and numbers rounded
+  // to 0.001 pt: the drawing operators without timestamps, stable across runs.
   ops: string
 }
 
@@ -58,10 +58,14 @@ export async function summarizePdf(bytes: Uint8Array): Promise<PageSummary[]> {
   return doc.getPages().map((page, i) => {
     // Image resource names are random per run; number them in first-use order.
     const names = new Map<string, string>()
-    const ops = contentStreamText(doc, i).replace(/\/Image-?\d+/g, name => {
-      if (!names.has(name)) names.set(name, `/Image${names.size}`)
-      return names.get(name)!
-    })
+    const ops = contentStreamText(doc, i)
+      .replace(/\/Image-?\d+/g, name => {
+        if (!names.has(name)) names.set(name, `/Image${names.size}`)
+        return names.get(name)!
+      })
+      // 0.001 pt is far below print resolution; rounding hides float noise
+      // from equivalent arithmetic while still catching any real change.
+      .replace(/-?\d+\.\d+/g, n => String(Math.round(Number(n) * 1000) / 1000 || 0))
     const { width, height } = page.getSize()
     return {
       size: [round(width), round(height)],
