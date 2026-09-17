@@ -1,25 +1,24 @@
-const DPI = 300
+import { mmToPx } from './units'
 
-export function mmToPx(mm: number): number {
-  return Math.floor((mm * DPI) / 25.4)
-}
-
-export function pxToMm(px: number): number {
-  return (px * 25.4) / DPI
-}
-
-export const CARD_BLEED = {
-  widthMm: 59,
-  heightMm: 89,
-  widthPx: mmToPx(59),   // 697
-  heightPx: mmToPx(89),  // 1051
-} as const
+// Card geometry. Millimetres are the source of truth; pixel sizes are the
+// 300 DPI crop output.
 
 export const CARD_TRIM = {
   widthMm: 55,
   heightMm: 85,
   widthPx: mmToPx(55),   // 650
   heightPx: mmToPx(85),  // 1004
+} as const
+
+// The crop editor always rasterises with this bleed on each side. Print
+// presets may place cards with a different bleed (see PrintPreset.bleedMm).
+export const CROP_BLEED_MM = 2
+
+export const CARD_BLEED = {
+  widthMm: CARD_TRIM.widthMm + 2 * CROP_BLEED_MM,    // 59
+  heightMm: CARD_TRIM.heightMm + 2 * CROP_BLEED_MM,  // 89
+  widthPx: mmToPx(CARD_TRIM.widthMm + 2 * CROP_BLEED_MM),   // 697
+  heightPx: mmToPx(CARD_TRIM.heightMm + 2 * CROP_BLEED_MM), // 1051
 } as const
 
 export const CARD_SAFE = {

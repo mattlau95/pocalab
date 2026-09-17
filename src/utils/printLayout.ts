@@ -1,6 +1,9 @@
 import type { PrintPreset } from '../models/preset'
+import { CARD_TRIM } from './dimensions'
 
-export const MM_TO_PT = 72 / 25.4
+// Sheet geometry for every preset, in millimetres from the sheet's top-left.
+// Cards are trim-size rectangles; each gets preset.bleedMm of bleed on every
+// side, so neighbouring cards are one gutter (two bleeds) apart.
 
 export interface LayoutResult {
   cardW: number
@@ -14,9 +17,14 @@ export interface LayoutResult {
   cards: Array<{ x: number; y: number; w: number; h: number }>
 }
 
+function cardSize(p: PrintPreset) {
+  return p.orientation === 'landscape'
+    ? { cardW: CARD_TRIM.heightMm, cardH: CARD_TRIM.widthMm }
+    : { cardW: CARD_TRIM.widthMm, cardH: CARD_TRIM.heightMm }
+}
+
 export function layout(p: PrintPreset): LayoutResult {
-  const cardW = p.orientation === 'landscape' ? 85 : 55
-  const cardH = p.orientation === 'landscape' ? 55 : 85
+  const { cardW, cardH } = cardSize(p)
   const gutter = 2 * p.bleedMm
 
   const contentW = p.cols * cardW + (p.cols - 1) * gutter
@@ -43,8 +51,7 @@ export function layout(p: PrintPreset): LayoutResult {
 }
 
 export function maxBleed(p: PrintPreset): number {
-  const cardW = p.orientation === 'landscape' ? 85 : 55
-  const cardH = p.orientation === 'landscape' ? 55 : 85
+  const { cardW, cardH } = cardSize(p)
   const bx = (p.sheetMm.w - p.cols * cardW) / (2 * p.cols)
   const by = (p.sheetMm.h - p.rows * cardH) / (2 * p.rows)
   return Math.min(bx, by)

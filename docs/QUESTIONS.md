@@ -8,5 +8,6 @@ Things I couldn't decide or verify on my own while working through Epic 4.5. New
 2. **iPhone check for MAT-415:** on pocalab.app, add 10+ cards, refresh, confirm they all come back. The ticket auto-closed on merge with this unticked.
 3. **Favicon check for MAT-726:** look at the browser tab icon on pocalab.app, and Share → Add to Home Screen on iPhone. The ticket auto-closed on merge with this unticked.
 4. **Header card count with several sheets ignores copies.** With one sheet it reads "3 / 9 cards" counting copies; with two or more it reads "12 cards · 2 sheets" counting cards only. Fix to count copies? (Small; not in any ticket yet.)
+5. **Case study on matthewclau.com is out of date after MAT-724.** It lives outside this repo, so I can't edit it. It says units derive from `mmToPx` in `dimensions.ts` or `mmToPt` in `pdf.ts`; now both live in `src/utils/units.ts`, and `pdf.ts` / `printPdf.ts` / `layout.ts` became one `src/utils/sheetPdf.ts`. The README is updated.
 
 ## Resolved

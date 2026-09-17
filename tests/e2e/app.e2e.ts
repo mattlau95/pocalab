@@ -1,94 +1,12 @@
-import { test, before, after, beforeEach, afterEach } from 'node:test'
+import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
-import { preview, type PreviewServer } from 'vite'
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
 import { PDFDocument } from 'pdf-lib'
-import { solidPngDataUrl } from '../helpers/png'
+import { setupApp, pngFile } from './harness'
 
-// End-to-end checks against the production build (`npm run build` first).
-// Each test gets a fresh browser context, so storage never leaks between tests.
-
-let server: PreviewServer
-let browser: Browser
-let context: BrowserContext
-let page: Page
-let baseUrl: string
-
-const pngFile = (name: string, w: number, h: number, rgb: [number, number, number]) => ({
-  name,
-  mimeType: 'image/png',
-  buffer: Buffer.from(solidPngDataUrl(w, h, rgb).split(',')[1], 'base64'),
-})
-
-before(async () => {
-  assert.ok(existsSync('dist/index.html'), 'run `npm run build` before the e2e tests')
-  server = await preview({ preview: { port: 0, strictPort: false }, logLevel: 'error' })
-  baseUrl = server.resolvedUrls!.local[0]
-  // CI installs Playwright's Chromium; locally fall back to an installed Chrome.
-  browser = await chromium.launch().catch(() => chromium.launch({ channel: 'chrome' }))
-})
-
-after(async () => {
-  await browser?.close()
-  await server?.close()
-})
-
-beforeEach(async () => {
-  context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true })
-  // tsx compiles page.evaluate callbacks with an esbuild __name helper the page doesn't have.
-  await context.addInitScript('globalThis.__name = (fn) => fn')
-  page = await context.newPage()
-  page.on('dialog', d => d.accept())
-  await page.goto(baseUrl)
-  await page.waitForLoadState('networkidle')
-})
-
-afterEach(async () => {
-  await context?.close()
-})
-
-type SeedCard = { id: string; hue: number; copies?: number }
-
-// Writes a project straight into IndexedDB, then reloads so the app hydrates it.
-async function seed(presetId: string, decks: SeedCard[][], imageSize = { w: 70, h: 105 }) {
-  await page.evaluate(async ({ presetId, decks, imageSize }) => {
-    const image = (hue: number) => {
-      const c = document.createElement('canvas')
-      c.width = imageSize.w; c.height = imageSize.h
-      const g = c.getContext('2d')!
-      // Coarse noise keeps each image distinct and a realistic size.
-      for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) {
-        g.fillStyle = `hsl(${hue + Math.random() * 40},70%,${30 + Math.random() * 40}%)`
-        g.fillRect(x, y, 2, 2)
-      }
-      return c.toDataURL('image/png')
-    }
-    const project = {
-      preset: { id: presetId },
-      decks: decks.map(cards => ({
-        cards: cards.map(c => ({ id: c.id, front: image(c.hue), back: image(c.hue + 180) })),
-        copies: Object.fromEntries(cards.map(c => [c.id, c.copies ?? 1])),
-        sharedBack: null,
-      })),
-    }
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open('pocalab', 1)
-      req.onupgradeneeded = () => req.result.createObjectStore('kv')
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
-    })
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('kv', 'readwrite')
-      tx.objectStore('kv').put(project, 'project')
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => reject(tx.error)
-    })
-    db.close()
-  }, { presetId, decks, imageSize })
-  await page.reload()
-  await page.waitForLoadState('networkidle')
-}
+const app = setupApp()
+const seed = app.seed
+let page = app.page
+beforeEach(() => { page = app.page })
 
 const headerCount = () => page.locator('.app-header__count').textContent()
 

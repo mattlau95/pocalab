@@ -21,7 +21,6 @@ type Action =
   | { type: 'SET_COPIES'; deckIndex: number; id: string; count: number }
   | { type: 'UPDATE_CARD'; deckIndex: number; id: string; patch: Partial<Pick<Card, 'front' | 'back' | 'frontSrc' | 'backSrc' | 'frontState' | 'backState'>> }
   | { type: 'SET_SHARED_BACK'; deckIndex: number; dataUrl: string | null }
-  | { type: 'CLEAR_DECK'; deckIndex: number }
   | { type: 'MOVE_CARD'; fromDeck: number; toDeck: number; cardId: string }
   | { type: 'HYDRATE'; project: Project }
 
@@ -121,12 +120,6 @@ function projectReducer(project: Project, action: Action): Project {
       return {
         ...project,
         decks: updateDeck(project.decks, action.deckIndex, d => ({ ...d, sharedBack: action.dataUrl })),
-      }
-
-    case 'CLEAR_DECK':
-      return {
-        ...project,
-        decks: updateDeck(project.decks, action.deckIndex, () => createDeck()),
       }
 
     case 'MOVE_CARD': {
@@ -312,12 +305,6 @@ export function useProject() {
 
     setSharedBack: (deckIndex: number, dataUrl: string | null) =>
       dispatch({ type: 'SET_SHARED_BACK', deckIndex, dataUrl }),
-
-    clearDeck: (deckIndex: number) => {
-      const deck = project.decks[deckIndex]
-      if (deck) deck.cards.forEach(revokeCard)
-      dispatch({ type: 'CLEAR_DECK', deckIndex })
-    },
 
     moveCard: (fromDeck: number, toDeck: number, cardId: string) =>
       dispatch({ type: 'MOVE_CARD', fromDeck, toDeck, cardId }),

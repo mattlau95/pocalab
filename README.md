@@ -26,19 +26,19 @@ pocalab does the mechanical part deterministically. The same nine cards now take
 
 A browser can lay images on a page easily. Getting a card to come out of a printer at exactly 55 mm, with its back in the right place, is the actual problem.
 
-- **Three unit systems have to agree.** The crop canvas works in pixels at 300 DPI, the layout maths works in millimetres, and the PDF works in points at 72 per inch. `src/utils/dimensions.ts` owns the millimetre-to-pixel conversion and the card constants; the layout and PDF modules convert millimetres to points. Rounding drift anywhere in that chain shows up as a card that is a hair too small.
+- **Three unit systems have to agree.** The crop canvas works in pixels at 300 DPI, the layout maths works in millimetres, and the PDF works in points at 72 per inch. `src/utils/units.ts` is the only place those conversions are defined (DPI, mm→px, mm→pt); `src/utils/dimensions.ts` derives the card sizes from it, and the layout, crop and PDF code all import from it. Rounding drift anywhere in that chain shows up as a card that is a hair too small.
 - **Rotation-aware rasterisation.** `src/utils/cropImage.ts` draws the source onto a rotated intermediate canvas, clips the crop rectangle to the image bounds, composites it onto the chosen background at the exact output size, and applies the optional fade. Zooming out below 100 % is allowed, so the background shows around the photo instead of stretching it.
-- **n-up geometry with a validity check.** `src/utils/printLayout.ts` centres an n-up grid on any sheet size and reports whether the margins can actually hold the bleed. The photo-paper presets that fit are the ones that pass.
-- **Duplex mirroring.** For a long-edge flip the back page is x-mirrored: `back.x = sheetWidth − front.x − cardWidth` (`src/utils/printPdf.ts`, `src/utils/layout.ts`). Get that wrong and every back is offset.
+- **n-up geometry with a validity check.** `src/utils/printLayout.ts` centres an n-up grid on any sheet size, Letter and A4 included, and reports whether the margins can actually hold the bleed. The photo-paper presets that fit are the ones that pass.
+- **Duplex mirroring.** For a long-edge flip the back page is x-mirrored: `back.x = sheetWidth − front.x − cardWidth` (`src/utils/sheetPdf.ts`). Get that wrong and every back is offset.
 
 ## What I built and what I wired together
 
 | Mine | Library |
 |---|---|
 | Crop rasterisation at 300 DPI with rotation, background and bleed compositing (`src/utils/cropImage.ts`) | `react-easy-crop` provides the drag and pinch gesture surface inside the crop frame |
-| Sheet layout geometry, validity check and crop marks (`src/utils/printLayout.ts`, `src/utils/layout.ts`) | `pdf-lib` provides page, image and line primitives; it is loaded lazily on first export |
-| Duplex mirroring and PDF assembly (`src/utils/printPdf.ts`, `src/utils/pdf.ts`) | React 19, TypeScript and Vite |
-| The step state machine that runs crop → back → deck → edit flows (`src/App.tsx`) | |
+| Sheet layout geometry and validity check for every paper size (`src/utils/printLayout.ts`) | `pdf-lib` provides page, image and line primitives; it is loaded lazily on first export |
+| One PDF pipeline: duplex mirroring, trim guides and crop marks, multi-sheet export (`src/utils/sheetPdf.ts`) | React 19, TypeScript and Vite |
+| The step state machine that runs crop → back → deck → edit flows (`src/hooks/useCardFlow.ts`) | |
 | Project model, reducer, IndexedDB persistence and migration from localStorage (`src/hooks/useProject.ts`, `src/utils/projectStore.ts`, `src/models/`) | |
 | Crop editor UX: undo/redo, keyboard panning, eyedropper, fill-to-bleed, low-resolution warning (`src/components/CropEditor.tsx`) | |
 | Live SVG sheet preview (`src/components/SheetPreview.tsx`) | |
@@ -73,25 +73,31 @@ React 19 · TypeScript · Vite · pdf-lib · react-easy-crop · plain CSS with c
 
 ```
 src/
-├── App.tsx                # step state machine: crop → back → deck → edit
+├── App.tsx                # picks the screen for the current step
+├── screens/               # DeckScreen, UploadBackScreen, BackScopeScreen
 ├── components/
+│   ├── PageShell.tsx      # header + main + overlays, shared by every screen
 │   ├── CropEditor.tsx     # guides, undo/redo, keyboard pan, eyedropper, fill
 │   ├── DeckCard.tsx       # front/back thumbnails, copies, edit/replace/move
 │   ├── ImageUpload.tsx    # drop zone with type/size validation
 │   ├── SheetPreview.tsx   # live SVG preview of the sheet layout
-│   └── Modal.tsx
+│   └── AppHeader.tsx, DeckPaperLabel.tsx, Modal.tsx
 ├── hooks/
 │   ├── useProject.ts      # reducer, hydration, persistence, migration
+│   ├── useCardFlow.ts     # step state machine: crop → back → deck → edit
+│   ├── useExport.ts       # PDF export state, progress and retry
 │   └── useBeforeUnload.ts
 ├── models/                # Card, Deck, Project, print presets
 └── utils/
-    ├── projectStore.ts    # IndexedDB read/write of the whole project
-    ├── dimensions.ts      # mm ↔ px, card constants (single source of truth)
+    ├── units.ts           # DPI, mm → px, mm → pt (the only unit conversions)
+    ├── dimensions.ts      # card trim, bleed and safe sizes
     ├── cropImage.ts       # 300 DPI rasterisation with rotation and bleed
-    ├── printLayout.ts     # n-up geometry and validity check
-    ├── printPdf.ts        # photo-paper PDFs, duplex mirror, crop marks
-    ├── layout.ts, pdf.ts  # Letter/A4 3×3 PDF
-tests/                     # node:test unit tests; e2e/ drives the built app with Playwright
+    ├── printLayout.ts     # n-up geometry and validity check for every preset
+    ├── sheetSlots.ts      # what prints in each slot; shared by preview and PDF
+    ├── sheetPdf.ts        # the PDF pipeline: duplex mirror, guides, crop marks
+    ├── projectStore.ts    # IndexedDB read/write of the whole project
+    └── blobUrls.ts        # releasing upload object URLs
+tests/                     # node:test unit tests (PDF output, layout); e2e/ drives the built app
 docs/
 ├── DEVLOG.md              # build log, session by session
 ├── audits/                # UX / a11y audit reports, dated
