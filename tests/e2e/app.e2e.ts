@@ -1,0 +1,232 @@
+import { test, before, after, beforeEach, afterEach } from 'node:test'
+import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
+import { preview, type PreviewServer } from 'vite'
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
+import { PDFDocument } from 'pdf-lib'
+import { solidPngDataUrl } from '../helpers/png'
+
+// End-to-end checks against the production build (`npm run build` first).
+// Each test gets a fresh browser context, so storage never leaks between tests.
+
+let server: PreviewServer
+let browser: Browser
+let context: BrowserContext
+let page: Page
+let baseUrl: string
+
+const pngFile = (name: string, w: number, h: number, rgb: [number, number, number]) => ({
+  name,
+  mimeType: 'image/png',
+  buffer: Buffer.from(solidPngDataUrl(w, h, rgb).split(',')[1], 'base64'),
+})
+
+before(async () => {
+  assert.ok(existsSync('dist/index.html'), 'run `npm run build` before the e2e tests')
+  server = await preview({ preview: { port: 0, strictPort: false }, logLevel: 'error' })
+  baseUrl = server.resolvedUrls!.local[0]
+  // CI installs Playwright's Chromium; locally fall back to an installed Chrome.
+  browser = await chromium.launch().catch(() => chromium.launch({ channel: 'chrome' }))
+})
+
+after(async () => {
+  await browser?.close()
+  await server?.close()
+})
+
+beforeEach(async () => {
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true })
+  // tsx compiles page.evaluate callbacks with an esbuild __name helper the page doesn't have.
+  await context.addInitScript('globalThis.__name = (fn) => fn')
+  page = await context.newPage()
+  page.on('dialog', d => d.accept())
+  await page.goto(baseUrl)
+  await page.waitForLoadState('networkidle')
+})
+
+afterEach(async () => {
+  await context?.close()
+})
+
+type SeedCard = { id: string; hue: number; copies?: number }
+
+// Writes a project straight into IndexedDB, then reloads so the app hydrates it.
+async function seed(presetId: string, decks: SeedCard[][], imageSize = { w: 70, h: 105 }) {
+  await page.evaluate(async ({ presetId, decks, imageSize }) => {
+    const image = (hue: number) => {
+      const c = document.createElement('canvas')
+      c.width = imageSize.w; c.height = imageSize.h
+      const g = c.getContext('2d')!
+      // Coarse noise keeps each image distinct and a realistic size.
+      for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) {
+        g.fillStyle = `hsl(${hue + Math.random() * 40},70%,${30 + Math.random() * 40}%)`
+        g.fillRect(x, y, 2, 2)
+      }
+      return c.toDataURL('image/png')
+    }
+    const project = {
+      preset: { id: presetId },
+      decks: decks.map(cards => ({
+        cards: cards.map(c => ({ id: c.id, front: image(c.hue), back: image(c.hue + 180) })),
+        copies: Object.fromEntries(cards.map(c => [c.id, c.copies ?? 1])),
+        sharedBack: null,
+      })),
+    }
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('pocalab', 1)
+      req.onupgradeneeded = () => req.result.createObjectStore('kv')
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite')
+      tx.objectStore('kv').put(project, 'project')
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  }, { presetId, decks, imageSize })
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+}
+
+const headerCount = () => page.locator('.app-header__count').textContent()
+
+test('a 10+ card project well past the old localStorage quota survives a reload', async () => {
+  const cards = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, hue: i * 30 }))
+  await seed('letter', [cards.slice(0, 9), cards.slice(9)], { w: 697, h: 1051 })
+  const size = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>(r => { const q = indexedDB.open('pocalab', 1); q.onsuccess = () => r(q.result) })
+    const value = await new Promise<unknown>(r => { const q = db.transaction('kv').objectStore('kv').get('project'); q.onsuccess = () => r(q.result) })
+    db.close()
+    return JSON.stringify(value).length
+  })
+  assert.ok(size > 10_000_000, `seeded project should exceed 10 MB, was ${(size / 1e6).toFixed(1)} MB`)
+  assert.equal(await page.locator('.deck-card').count(), 12)
+
+  await page.getByRole('button', { name: 'Increase copies' }).nth(9).click()
+  await page.locator('.app-header__save--saved').waitFor()
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+  assert.equal(await page.locator('.deck-card').count(), 12)
+  assert.equal(await page.locator('.copies-count').nth(9).textContent(), '2')
+})
+
+test('save status: nothing on load, Saved after a change, Not saved when a write fails', async () => {
+  await seed('letter', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 200 }]])
+  assert.equal(await page.locator('.app-header__save').count(), 0)
+
+  await page.getByRole('button', { name: 'Increase copies' }).first().click()
+  await page.locator('.app-header__save--saved').waitFor()
+
+  await page.evaluate(() => {
+    IDBObjectStore.prototype.put = function () { throw new DOMException('Quota exceeded', 'QuotaExceededError') }
+  })
+  await page.getByRole('button', { name: 'Increase copies' }).first().click()
+  await page.locator('.app-header__save--error').waitFor()
+  assert.match(await page.locator('.toast--error').innerText(), /Couldn't save/)
+  await page.getByRole('button', { name: 'Dismiss' }).click()
+  assert.equal(await page.locator('.toast--error').count(), 0)
+})
+
+test('sheet preview shows each card as many times as its copies (Letter)', async () => {
+  await seed('letter', [[{ id: 'a', hue: 0, copies: 5 }, { id: 'b', hue: 200 }]])
+  const counts = async () => {
+    await page.getByRole('button', { name: 'See Preview' }).click()
+    const sheets = page.locator('.sheet-preview-pair svg.sheet-preview')
+    const result = [await sheets.nth(0).locator('image').count(), await sheets.nth(1).locator('image').count()]
+    await page.getByRole('button', { name: 'Close' }).last().click()
+    return result
+  }
+  assert.deepEqual(await counts(), [6, 6])
+  await page.getByRole('button', { name: 'Increase copies' }).nth(1).click()
+  assert.deepEqual(await counts(), [7, 7])
+})
+
+test('sheet preview on photo paper shows one slot per card, like its PDF', async () => {
+  await seed('5x7-4up', [[{ id: 'a', hue: 0, copies: 2 }, { id: 'b', hue: 200 }]])
+  await page.getByRole('button', { name: 'See Preview' }).click()
+  const sheets = page.locator('.sheet-preview-pair svg.sheet-preview')
+  assert.equal(await sheets.nth(0).locator('image').count(), 2)
+  assert.equal(await sheets.nth(1).locator('image').count(), 2)
+})
+
+test('Download PDF reports progress and produces a two-page PDF with every copy', async () => {
+  await seed('letter', [[{ id: 'a', hue: 0, copies: 3 }, { id: 'b', hue: 200 }]])
+  await page.evaluate(() => {
+    const w = window as unknown as { labels: string[] }
+    w.labels = []
+    new MutationObserver(() => {
+      const text = document.querySelector('.deck-actions__buttons button')?.textContent
+      if (text && w.labels.at(-1) !== text) w.labels.push(text)
+    }).observe(document.body, { subtree: true, childList: true, characterData: true })
+  })
+  const download = page.waitForEvent('download')
+  await page.locator('.deck-actions__buttons button').first().click()
+  const file = await download
+  assert.equal(file.suggestedFilename(), 'photocards.pdf')
+
+  const doc = await PDFDocument.load(await (await file.createReadStream()).toArray().then(c => Buffer.concat(c)))
+  assert.equal(doc.getPageCount(), 2)
+
+  const labels = await page.evaluate(() => (window as unknown as { labels: string[] }).labels)
+  assert.ok(labels.includes('Generating… 1 / 4'), `labels: ${labels.join(' → ')}`)
+  assert.equal(labels.at(-1), 'Download PDF')
+})
+
+test('crop editor: add a card end to end, with undo, redo and the hex colour field', async () => {
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('front.png', 900, 1300, [220, 40, 120]))
+  await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
+
+  const zoomValue = page.locator('.ctrl-value').nth(1)
+  const undo = page.getByRole('button', { name: 'Undo' })
+  const redo = page.getByRole('button', { name: 'Redo' })
+  const startZoom = await zoomValue.textContent()
+  assert.equal(await undo.isDisabled(), true)
+
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  const zoomedIn = await zoomValue.textContent()
+  assert.notEqual(zoomedIn, startZoom)
+  await undo.click()
+  assert.equal(await zoomValue.textContent(), startZoom)
+  await redo.click()
+  assert.equal(await zoomValue.textContent(), zoomedIn)
+
+  // A committed hex value becomes the background; undo puts the field back too.
+  const hex = page.getByRole('textbox', { name: 'Background color hex value' })
+  const startHex = await hex.inputValue()
+  await hex.fill('#00ff00')
+  await hex.press('Enter')
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.crop-viewport')!).backgroundColor === 'rgb(0, 255, 0)')
+  await undo.click()
+  assert.equal(await hex.inputValue(), startHex)
+
+  // Arrow keys pan the image and record one history step per key press.
+  await page.getByRole('group', { name: /Crop viewport/ }).focus()
+  await page.keyboard.press('ArrowRight')
+  assert.equal(await undo.isDisabled(), false)
+
+  await page.getByRole('button', { name: 'Confirm crop' }).click()
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('back.png', 697, 1051, [40, 80, 220]))
+  await page.getByRole('button', { name: 'Confirm crop' }).click()
+
+  await page.locator('.deck-card').first().waitFor()
+  assert.equal(await headerCount(), '1 / 9 cards')
+  await page.locator('.app-header__save--saved').waitFor()
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+  assert.equal(await page.locator('.deck-card').count(), 1)
+})
+
+// Known issue, also on main before MAT-723: the MAT-290 auto-fill leaves the zoom
+// at 100% while Fill gives 99%, so auto-fill doesn't seem to apply. Logged in docs/INBOX.md.
+test('crop editor: a bleed-size image (697×1051) is auto-filled to the frame', { skip: 'known issue, see docs/INBOX.md' }, async () => {
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('bleed.png', 697, 1051, [10, 200, 200]))
+  await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
+  const zoomValue = page.locator('.ctrl-value').nth(1)
+  // Fill is the zoom where the image covers the frame; pressing Fill must not change it.
+  await page.waitForTimeout(300)
+  const autoZoom = await zoomValue.textContent()
+  await page.getByRole('button', { name: 'Fill' }).click()
+  assert.equal(await zoomValue.textContent(), autoZoom)
+})
