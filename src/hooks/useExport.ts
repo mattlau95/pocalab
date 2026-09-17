@@ -59,10 +59,10 @@ export function useExport(project: Project, onExported: () => void) {
     }, null)
   }
 
-  // Matches the original behaviour: a failed "all sheets" export retries sheet 1.
+  // Repeats whichever export failed.
   function retry() {
     setError(null)
-    return exportSheet(failedDeckIndex ?? 0)
+    return failedDeckIndex === null ? exportAllSheets() : exportSheet(failedDeckIndex)
   }
 
   // Embedding images is the slow part; once they are all in, pdf-lib still

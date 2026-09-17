@@ -188,6 +188,24 @@ test('photo paper downloads per sheet and all sheets', async () => {
   assert.equal((await all).suggestedFilename(), 'photocards-all.pdf')
 })
 
+test('Try again after a failed export repeats that same export', async () => {
+  await app.seed('4x6-2up', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 60 }], [{ id: 'c', hue: 120 }]])
+  // Make the download step fail once.
+  await page.evaluate(() => {
+    const original = URL.createObjectURL
+    URL.createObjectURL = () => { URL.createObjectURL = original; throw new Error('simulated failure') }
+  })
+  await page.getByRole('button', { name: 'Download all sheets' }).click()
+  const error = page.locator('.deck-actions__error')
+  await error.waitFor()
+  assert.match(await error.innerText(), /PDF generation failed/)
+
+  const download = page.waitForEvent('download')
+  await error.getByRole('button', { name: 'Try again' }).click()
+  assert.equal((await download).suggestedFilename(), 'photocards-all.pdf')
+  await error.waitFor({ state: 'detached' })
+})
+
 test('clicking the logo with cards asks, then clears the project', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }]])
   app.dismissNextDialog()
