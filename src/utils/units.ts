@@ -8,7 +8,7 @@ export const PT_PER_INCH = 72
 
 export const MM_TO_PT = PT_PER_INCH / MM_PER_INCH
 
-// Rounds down so a card is never rasterised larger than its physical size.
+// Rounds down: 59 mm is 696.85 px at 300 DPI, so the bleed-size crop is 696 px wide.
 export function mmToPx(mm: number): number {
   return Math.floor((mm * DPI) / MM_PER_INCH)
 }

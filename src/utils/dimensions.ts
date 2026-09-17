@@ -6,8 +6,8 @@ import { mmToPx } from './units'
 export const CARD_TRIM = {
   widthMm: 55,
   heightMm: 85,
-  widthPx: mmToPx(55),   // 650
-  heightPx: mmToPx(85),  // 1004
+  widthPx: mmToPx(55),   // 649
+  heightPx: mmToPx(85),  // 1003
 } as const
 
 // The crop editor always rasterises with this bleed on each side. Print
@@ -17,7 +17,7 @@ export const CROP_BLEED_MM = 2
 export const CARD_BLEED = {
   widthMm: CARD_TRIM.widthMm + 2 * CROP_BLEED_MM,    // 59
   heightMm: CARD_TRIM.heightMm + 2 * CROP_BLEED_MM,  // 89
-  widthPx: mmToPx(CARD_TRIM.widthMm + 2 * CROP_BLEED_MM),   // 697
+  widthPx: mmToPx(CARD_TRIM.widthMm + 2 * CROP_BLEED_MM),   // 696
   heightPx: mmToPx(CARD_TRIM.heightMm + 2 * CROP_BLEED_MM), // 1051
 } as const
 

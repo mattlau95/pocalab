@@ -16,7 +16,7 @@ pocalab does the mechanical part deterministically. The same nine cards now take
 
 ## How it works
 
-1. **Crop.** Drop in a photo. The editor shows three nested guides: bleed (59 × 89 mm, the image fills to here), trim (55 × 85 mm, where you cut) and safe (51 × 81 mm, keep faces and text inside). Rotate, zoom, pan with the mouse or arrow keys, pick a background colour, and confirm. The crop is rasterised to exactly 697 × 1051 px, which is 300 DPI at bleed size.
+1. **Crop.** Drop in a photo. The editor shows three nested guides: bleed (59 × 89 mm, the image fills to here), trim (55 × 85 mm, where you cut) and safe (51 × 81 mm, keep faces and text inside). Rotate, zoom, pan with the mouse or arrow keys, pick a background colour, and confirm. The crop is rasterised to exactly 696 × 1051 px, which is 300 DPI at bleed size (rounded down from 696.85 × 1051.18).
 2. **Deck.** Add a back for the card, or reuse one back for the whole deck. Set copy counts. Pick a paper size: US Letter or A4 at nine cards a sheet, or 4 × 6 and 5 × 7 photo paper at two to four cards a sheet. The sheet preview updates live.
 3. **Print.** Download a two-page PDF. Page one is the fronts with crop marks; page two is the backs, mirrored for a long-edge duplex flip so each back lands behind its front.
 
@@ -48,7 +48,7 @@ A browser can lay images on a page easily. Getting a card to come out of a print
 
 - **Client-side only.** No accounts, no onboarding, no infrastructure; the ceiling is browser storage and the Canvas API. The project lives in IndexedDB because a deck of 300 DPI cards is well past the localStorage quota.
 - **pdf-lib over jsPDF.** jsPDF's strength is HTML-to-PDF, which is irrelevant here; pdf-lib is TypeScript-native and works in exact point coordinates.
-- **300 DPI floor, 2 mm bleed.** The card is rasterised at 697 × 1051 px and the editor warns when the source cannot supply that many pixels, so soft prints are a known trade-off rather than a surprise.
+- **300 DPI floor, 2 mm bleed.** The card is rasterised at 696 × 1051 px and the editor warns when the source cannot supply that many pixels, so soft prints are a known trade-off rather than a surprise.
 - **Long-edge duplex.** Backs are mirrored for the flip that home printers default to; the PDF says so in its margin.
 - **Lazy PDF chunk.** pdf-lib is 175 KB gzipped and only needed at export, so it is a dynamic import; initial load is 80 KB gzipped.
 - **Shared back.** One back can serve the whole deck, which removed the single most repetitive step of the manual workflow.
@@ -59,7 +59,7 @@ Each decision has a dated entry in the [devlog](docs/DEVLOG.md).
 
 | Zone | Size | Purpose |
 |---|---|---|
-| Bleed | 59 × 89 mm (697 × 1051 px at 300 DPI) | Image fills to here so a slightly off cut has no white edge |
+| Bleed | 59 × 89 mm (696 × 1051 px at 300 DPI) | Image fills to here so a slightly off cut has no white edge |
 | Trim | 55 × 85 mm | The cut line; the finished card |
 | Safe | 51 × 81 mm | Keep faces and text inside |
 

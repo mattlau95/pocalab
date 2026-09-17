@@ -2,6 +2,7 @@ import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { PDFDocument } from 'pdf-lib'
 import { setupApp, pngFile } from './harness'
+import { CARD_BLEED } from '../../src/utils/dimensions'
 
 const app = setupApp()
 const seed = app.seed
@@ -125,7 +126,7 @@ test('crop editor: add a card end to end, with undo, redo and the hex colour fie
   assert.equal(await undo.isDisabled(), false)
 
   await page.getByRole('button', { name: 'Confirm crop' }).click()
-  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('back.png', 697, 1051, [40, 80, 220]))
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('back.png', CARD_BLEED.widthPx, CARD_BLEED.heightPx, [40, 80, 220]))
   await page.getByRole('button', { name: 'Confirm crop' }).click()
 
   await page.locator('.deck-card').first().waitFor()
@@ -136,15 +137,14 @@ test('crop editor: add a card end to end, with undo, redo and the hex colour fie
   assert.equal(await page.locator('.deck-card').count(), 1)
 })
 
-// Known issue, also on main before MAT-723: the MAT-290 auto-fill leaves the zoom
-// at 100% while Fill gives 99%, so auto-fill doesn't seem to apply. Logged in docs/INBOX.md.
-test('crop editor: a bleed-size image (697×1051) is auto-filled to the frame', { skip: 'known issue, see docs/INBOX.md' }, async () => {
-  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('bleed.png', 697, 1051, [10, 200, 200]))
+test('crop editor: a re-uploaded bleed-size export is auto-filled to the frame', async () => {
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('bleed.png', CARD_BLEED.widthPx, CARD_BLEED.heightPx, [10, 200, 200]))
   await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
   const zoomValue = page.locator('.ctrl-value').nth(1)
-  // Fill is the zoom where the image covers the frame; pressing Fill must not change it.
+  // Fill is the zoom where the image covers the frame; auto-fill should already be there.
   await page.waitForTimeout(300)
   const autoZoom = await zoomValue.textContent()
+  assert.notEqual(autoZoom, '100%', 'auto-fill changed the zoom from its default')
   await page.getByRole('button', { name: 'Fill' }).click()
   assert.equal(await zoomValue.textContent(), autoZoom)
 })
