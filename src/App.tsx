@@ -106,12 +106,13 @@ type Step =
   | { id: 'confirm-back-scope'; dataUrl: string; newSrc: string; state: CropState; cardId: string; sharingCardIds: string[]; deckIndex: number }
 
 function App() {
-  const { project, hydrated, storageWriteError, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
+  const { project, hydrated, storageWriteError, saveStatus, setPreset, addCard, removeCard, setCopies, updateCard, setSharedBack, addDeck, removeDeck, moveCard, resetProject } = useProject()
   const nUp = project.preset.nUp
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
   const [cardAdded, setCardAdded] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportErrorDeckIndex, setExportErrorDeckIndex] = useState<number | null>(null)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
@@ -159,18 +160,20 @@ function App() {
 
   async function handleExport(deckIndex = 0) {
     setExporting(true)
+    setExportProgress(null)
     setExportError(null)
+    const onProgress = (done: number, total: number) => setExportProgress({ done, total })
     try {
       const deck = project.decks[deckIndex]
       if (!deck) return
       if (isPhotoPaper) {
         const { buildPrintPdf } = await import('./utils/printPdf')
-        const bytes = await buildPrintPdf(project.preset, deck)
+        const bytes = await buildPrintPdf(project.preset, deck, onProgress)
         triggerDownload(bytes, project.decks.length > 1 ? `sheet-${deckIndex + 1}.pdf` : 'sheet-1.pdf')
       } else {
         const { createPhotocardPdf } = await import('./utils/pdf')
         const paperSize = (project.preset.id === 'a4' ? 'a4' : 'letter') as 'letter' | 'a4'
-        const bytes = await createPhotocardPdf(expandDeck(deck), paperSize)
+        const bytes = await createPhotocardPdf(expandDeck(deck), paperSize, onProgress)
         triggerDownload(bytes, 'photocards.pdf')
       }
       setShowFeedbackPrompt(true)
@@ -179,19 +182,24 @@ function App() {
       setExportErrorDeckIndex(deckIndex)
     } finally {
       setExporting(false)
+      setExportProgress(null)
     }
   }
 
   async function handleExportAll() {
     setExporting(true)
+    setExportProgress(null)
     setExportError(null)
     try {
       const { buildPrintPdf } = await import('./utils/printPdf')
       const { PDFDocument } = await import('pdf-lib')
       const combined = await PDFDocument.create()
-      for (const d of project.decks) {
-        if (d.cards.length === 0) continue
-        const sheetBytes = await buildPrintPdf(project.preset, d)
+      const decks = project.decks.filter(d => d.cards.length > 0)
+      const total = decks.reduce((n, d) => n + Math.min(d.cards.length, project.preset.nUp), 0)
+      let offset = 0
+      for (const d of decks) {
+        const sheetBytes = await buildPrintPdf(project.preset, d, (done) => setExportProgress({ done: offset + done, total }))
+        offset += Math.min(d.cards.length, project.preset.nUp)
         const sheetDoc = await PDFDocument.load(sheetBytes)
         const pages = await combined.copyPages(sheetDoc, sheetDoc.getPageIndices())
         pages.forEach(p => combined.addPage(p))
@@ -204,6 +212,7 @@ function App() {
       setExportErrorDeckIndex(null)
     } finally {
       setExporting(false)
+      setExportProgress(null)
     }
   }
 
@@ -578,6 +587,16 @@ function App() {
     )
   }
 
+  // Embedding images is the slow part; once they are all in, pdf-lib still
+  // has to serialise the document.
+  const exportLabel = !exportProgress
+    ? 'Generating…'
+    : exportProgress.done < exportProgress.total
+      ? `Generating… ${exportProgress.done} / ${exportProgress.total}`
+      : 'Finishing…'
+
+  const saveLabel = { idle: null, saving: 'Saving…', saved: 'Saved', error: 'Not saved' }[saveStatus]
+
   const headerCount = project.decks.length > 1
     ? `${totalCards} cards · ${project.decks.length} sheets`
     : `${deckTotal(project.decks[0])} / ${nUp} cards`
@@ -593,7 +612,14 @@ function App() {
           </div>
           <span className="app-header__tagline">a K-pop photocard maker</span>
         </div>
-        <span className="app-header__count" aria-live="polite" aria-atomic="true">{headerCount}</span>
+        <div className="app-header__status">
+          <span className="app-header__count" aria-live="polite" aria-atomic="true">{headerCount}</span>
+          {/* Not a live region: it changes on every edit, and write failures
+              are already announced by the storage error toast. */}
+          {saveLabel && (
+            <span className={`app-header__save app-header__save--${saveStatus}`}>{saveLabel}</span>
+          )}
+        </div>
         <a className="kofi-btn" href={KO_FI_URL} target="_blank" rel="noopener noreferrer">☕ Support</a>
       </header>
 
@@ -732,7 +758,7 @@ function App() {
             <div className="deck-actions__buttons">
               {project.decks.map((deck, di) => deck.cards.length > 0 && (
                 <button key={di} className="btn btn--primary" onClick={() => handleExport(di)} disabled={exporting}>
-                  {exporting ? 'Generating…' : isPhotoPaper
+                  {exporting ? exportLabel : isPhotoPaper
                     ? (project.decks.filter(d => d.cards.length > 0).length > 1 ? `Download sheet ${di + 1}` : 'Download sheet')
                     : 'Download PDF'}
                 </button>
@@ -782,7 +808,7 @@ function App() {
               </label>
             )}
             <button className="btn btn--primary deck-bar__download" onClick={() => handleExport(0)} disabled={exporting}>
-              {exporting ? 'Generating…' : isPhotoPaper ? 'Download sheet' : 'Download PDF'}
+              {exporting ? exportLabel : isPhotoPaper ? 'Download sheet' : 'Download PDF'}
             </button>
           </div>
         )}

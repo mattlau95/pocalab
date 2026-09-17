@@ -4,6 +4,7 @@ import { layout, MM_TO_PT } from './printLayout'
 import { mmToPt } from './layout'
 import type { PrintPreset } from '../models/preset'
 import type { Deck } from '../models/deck'
+import { yieldToBrowser, type PdfProgress } from './pdf'
 
 function dataUrlToBytes(dataUrl: string): Uint8Array {
   const base64 = dataUrl.split(',')[1]
@@ -52,7 +53,7 @@ function drawPrintCropMarks(
   }
 }
 
-export async function buildPrintPdf(preset: PrintPreset, deck: Deck): Promise<Uint8Array> {
+export async function buildPrintPdf(preset: PrintPreset, deck: Deck, onProgress?: PdfProgress): Promise<Uint8Array> {
   const L = layout(preset)
   const b = preset.bleedMm
   const pageW = preset.sheetMm.w * MM_TO_PT
@@ -68,6 +69,7 @@ export async function buildPrintPdf(preset: PrintPreset, deck: Deck): Promise<Ui
   // Mirror slot x-positions for long-edge duplex back
   const backSlots = slots.map(s => ({ ...s, x: preset.sheetMm.w - s.x - s.w }))
 
+  onProgress?.(0, cards.length)
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i]
     const fs = slots[i]
@@ -99,6 +101,8 @@ export async function buildPrintPdf(preset: PrintPreset, deck: Deck): Promise<Ui
         backPage.drawImage(img, { x: backImgX, y: backImgY, width: imgW, height: imgH })
       } catch { /* skip unparseable image */ }
     }
+    onProgress?.(i + 1, cards.length)
+    if (onProgress) await yieldToBrowser()
   }
 
   drawPrintCropMarks(frontPage, slots, pageH)

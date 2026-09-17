@@ -25,7 +25,15 @@ function readCalibration(): Calibration {
   return { theta: 0, dx: 0, dy: 0 }
 }
 
-export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize = 'letter'): Promise<Uint8Array> {
+export type PdfProgress = (done: number, total: number) => void
+
+// Image embedding never yields to the event loop on its own, so without a
+// pause React can't render progress until the whole PDF is built.
+export function yieldToBrowser(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0))
+}
+
+export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize = 'letter', onProgress?: PdfProgress): Promise<Uint8Array> {
   const cal = readCalibration()
   const cfg = paperSize === 'a4' ? A4_CONFIG : LETTER_CONFIG
 
@@ -42,7 +50,9 @@ export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize 
   // printed side); front trim marks stay on top of the images as a continuous ruler guide.
   drawCropMarks(backPage, cfg)
 
-  for (let i = 0; i < Math.min(slots.length, 9); i++) {
+  const total = Math.min(slots.length, 9)
+  onProgress?.(0, total)
+  for (let i = 0; i < total; i++) {
     const { front, back } = slots[i]
 
     if (front) {
@@ -60,6 +70,8 @@ export async function createPhotocardPdf(slots: PdfSlot[], paperSize: PaperSize 
         rotate: degrees(cal.theta),
       })
     }
+    onProgress?.(i + 1, total)
+    if (onProgress) await yieldToBrowser()
   }
 
   drawCropMarks(frontPage, cfg)
