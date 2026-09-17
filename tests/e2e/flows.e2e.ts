@@ -192,6 +192,19 @@ test('a card can be moved to another sheet with room', async () => {
   assert.deepEqual(project!.decks.map(d => d.cards.map(c => c.id)), [['b'], ['c', 'a']])
 })
 
+test('the header counts copies, not just cards, across sheets', async () => {
+  await app.seed('letter', [[{ id: 'a', hue: 0, copies: 5 }, { id: 'b', hue: 60 }], [{ id: 'c', hue: 120 }]])
+  assert.equal(await headerCount(), '7 cards · 2 sheets')
+  await page.getByRole('button', { name: 'Increase copies' }).nth(1).click()
+  assert.equal(await headerCount(), '8 cards · 2 sheets')
+})
+
+test('the sheet preview explains that the back page is flipped when printed', async () => {
+  await app.seed('letter', [[{ id: 'a', hue: 0 }]])
+  await page.getByRole('button', { name: 'See Preview' }).click()
+  assert.match(await page.locator('.sheet-preview-pair__note').innerText(), /flips the back page for you/)
+})
+
 test('changing paper size re-flows cards across sheets and says so', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 60 }, { id: 'c', hue: 120 }]])
   await page.getByRole('button', { name: 'Paper Size' }).click()

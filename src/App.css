@@ -826,10 +826,18 @@
   gap: 8px;
 }
 
+.sheet-preview-pair__note {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--foreground-muted);
+  text-align: center;
+}
+
 .sheet-preview-pair__label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--muted-foreground);
+  color: var(--foreground-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
