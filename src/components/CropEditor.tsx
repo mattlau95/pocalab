@@ -40,6 +40,8 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
   const [showGrid, setShowGrid] = useState(false)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [isLowRes, setIsLowRes] = useState(false)
+  // The browser accepted the file's type but couldn't decode the image.
+  const [decodeFailed, setDecodeFailed] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
@@ -69,17 +71,20 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
     return () => ro.disconnect()
   }, [])
 
-  // Reset rendered media when the image changes so stale dims don't trigger auto-fill
+  // On a new image, drop the previous media size so stale dims don't trigger
+  // auto-fill, and clear any decode failure from the image being replaced.
   const [prevImageSrc, setPrevImageSrc] = useState(imageSrc)
   if (imageSrc !== prevImageSrc) {
     setPrevImageSrc(imageSrc)
     setRenderedMedia(null)
+    setDecodeFailed(false)
   }
 
-  // Detect natural image size
+  // Detect natural image size, and notice files the browser can't decode.
   useEffect(() => {
     const img = new Image()
     img.onload = () => setImgSize({ w: img.naturalWidth, h: img.naturalHeight })
+    img.onerror = () => setDecodeFailed(true)
     img.src = imageSrc
   }, [imageSrc])
 
@@ -418,7 +423,15 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
         </div>
       </div>
 
-      {isLowRes && (
+      {decodeFailed && (
+        <p className="crop-low-res" role="alert">
+          This image couldn't be opened — the file may be damaged, or saved in a format this browser
+          can't read. Try {onReplace ? 'replacing it' : 'a different image'}, ideally a JPEG or PNG
+          straight from your camera roll.
+        </p>
+      )}
+
+      {isLowRes && !decodeFailed && (
         <p className="crop-low-res">
           Source resolution is below 300 DPI at card size — printed result may appear soft.
         </p>
@@ -441,7 +454,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
           </label>
         )}
         <button className="btn btn--ghost" onClick={onCancel}>Cancel</button>
-        <button className="btn btn--primary" onClick={handleConfirm} disabled={!croppedAreaPixels || exporting}>
+        <button className="btn btn--primary" onClick={handleConfirm} disabled={!croppedAreaPixels || exporting || decodeFailed}>
           {exporting ? 'Exporting…' : 'Confirm crop'}
         </button>
       </div>

@@ -65,7 +65,9 @@ test('deck screen, Letter, then the feedback prompt after an export', async () =
   await page.getByRole('button', { name: 'Download PDF' }).first().click()
   await download
   await page.locator('.feedback-prompt').waitFor()
-  await check('feedback prompt')
+  await check('feedback prompt and print checklist')
+  await page.locator('.print-guidance').evaluate(d => { (d as HTMLDetailsElement).open = true })
+  await check('print settings expanded')
 })
 
 test('deck screen, photo paper with two sheets and the move menu open', async () => {

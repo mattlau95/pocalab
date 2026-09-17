@@ -589,6 +589,64 @@
   background: var(--border);
 }
 
+.print-checklist {
+  margin: 20px auto 0;
+  max-width: 440px;
+  padding: 14px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary-muted);
+}
+
+.print-checklist__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.print-checklist__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.print-checklist__dismiss {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--foreground-muted);
+  font-size: 18px;
+  line-height: 1;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.print-checklist__items {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.print-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--foreground-muted);
+  cursor: pointer;
+}
+
+.print-checklist__item input {
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+
 .feedback-prompt {
   display: flex;
   align-items: center;
