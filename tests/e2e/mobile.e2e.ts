@@ -19,6 +19,12 @@ test('the bottom bar downloads the PDF and adds images', async () => {
   await bar.getByRole('button', { name: 'Download PDF' }).click()
   assert.equal((await download).suggestedFilename(), 'photocards.pdf')
 
+  // The print checklist sits between two blocks that are hidden on phones.
+  const checklist = page.getByRole('region', { name: 'Before you print' })
+  await checklist.waitFor()
+  assert.equal(await checklist.isVisible(), true)
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'no sideways scroll with the checklist shown')
+
   await bar.locator('input[type=file]').setInputFiles(pngFile('front.png', 300, 450, [200, 0, 0]))
   await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
 })

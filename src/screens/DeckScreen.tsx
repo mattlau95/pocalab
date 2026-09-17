@@ -11,6 +11,7 @@ import { ImageUpload } from '../components/ImageUpload'
 import { SheetPreview } from '../components/SheetPreview'
 import { Modal } from '../components/Modal'
 import { PrintGuidance } from '../components/PrintGuidance'
+import { PrintChecklist } from '../components/PrintChecklist'
 import { isPhotoPaper as isPhotoPaperPreset, printedSlots } from '../utils/sheetSlots'
 
 const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
@@ -28,6 +29,8 @@ interface Props {
   exporter: ReturnType<typeof useExport>
   showFeedbackPrompt: boolean
   onDismissFeedback: () => void
+  showPrintChecklist: boolean
+  onDismissPrintChecklist: () => void
   storageToast: string | null
   onDismissStorageToast: () => void
   confirm: Confirm
@@ -35,7 +38,7 @@ interface Props {
 
 // The idle screen: the first-run upload, or the deck with its sheets, export
 // actions, sheet preview and paper size picker.
-export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onDismissFeedback, storageToast, onDismissStorageToast, confirm }: Props) {
+export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onDismissFeedback, showPrintChecklist, onDismissPrintChecklist, storageToast, onDismissStorageToast, confirm }: Props) {
   const { project, saveStatus, setPreset, removeCard, setCopies, addDeck, removeDeck, moveCard, removalMessage, undoRemoval } = projectApi
   const nUp = project.preset.nUp
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
@@ -312,6 +315,10 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
             </p>
           )}
         </div>
+      )}
+
+      {showPrintChecklist && (
+        <PrintChecklist preset={project.preset} onDismiss={onDismissPrintChecklist} />
       )}
 
       {anyCards && project.decks.some(d => deckTotal(d) < nUp) && (

@@ -199,6 +199,22 @@ test('the header counts copies, not just cards, across sheets', async () => {
   assert.equal(await headerCount(), '8 cards · 2 sheets')
 })
 
+test('a file that looks like a PNG but cannot be decoded says so, and blocks Confirm', async () => {
+  const broken = { name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not really a png at all') }
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(broken)
+  const error = page.getByRole('alert')
+  await error.waitFor()
+  assert.match(await error.innerText(), /couldn't be opened/)
+  assert.equal(await confirmCrop().isDisabled(), true)
+
+  // Picking a good image from the same screen clears the error.
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('front.png', 300, 450, [200, 0, 0]))
+  await confirmCrop().waitFor()
+  assert.equal(await page.getByRole('alert').count(), 0)
+  assert.equal(await confirmCrop().isDisabled(), false)
+})
+
 test('print settings are available for every paper size, with the validated values', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }]])
   const guidance = page.locator('.print-guidance')
@@ -241,6 +257,29 @@ test('photo paper downloads per sheet and all sheets', async () => {
   const all = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download all sheets' }).click()
   assert.equal((await all).suggestedFilename(), 'photocards-all.pdf')
+})
+
+test('a checklist of the print-ruining settings appears after a download', async () => {
+  await app.seed('letter', [[{ id: 'a', hue: 0 }]])
+  assert.equal(await page.locator('.print-checklist').count(), 0, 'not shown before exporting')
+
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download PDF' }).first().click()
+  await download
+
+  const checklist = page.getByRole('region', { name: 'Before you print' })
+  await checklist.waitFor()
+  const text = await checklist.innerText()
+  assert.match(text, /Actual size/)
+  assert.match(text, /Borderless turned off/)
+  assert.match(text, /long edge/)
+
+  const first = checklist.getByRole('checkbox').first()
+  await first.check()
+  assert.equal(await first.isChecked(), true)
+
+  await checklist.getByRole('button', { name: 'Dismiss checklist' }).click()
+  await checklist.waitFor({ state: 'detached' })
 })
 
 test('Try again after a failed export repeats that same export', async () => {

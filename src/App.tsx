@@ -18,8 +18,13 @@ function App() {
   const flow = useCardFlow(projectApi, confirm)
   const { step } = flow
 
+  // Both post-export panels appear once a PDF has been downloaded.
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
-  const exporter = useExport(project, () => setShowFeedbackPrompt(true))
+  const [showPrintChecklist, setShowPrintChecklist] = useState(false)
+  const exporter = useExport(project, () => {
+    setShowFeedbackPrompt(true)
+    setShowPrintChecklist(true)
+  })
   // useProject reports a write failure once; the toast shows it until dismissed.
   const [storageToastDismissed, setStorageToastDismissed] = useState(false)
 
@@ -112,6 +117,8 @@ function App() {
             exporter={exporter}
             showFeedbackPrompt={showFeedbackPrompt}
             onDismissFeedback={() => setShowFeedbackPrompt(false)}
+            showPrintChecklist={showPrintChecklist}
+            onDismissPrintChecklist={() => setShowPrintChecklist(false)}
             storageToast={storageToastDismissed ? null : storageWriteError}
             onDismissStorageToast={() => setStorageToastDismissed(true)}
             confirm={confirm}
