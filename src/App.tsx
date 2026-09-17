@@ -600,8 +600,22 @@ function App() {
       <main id="main-content" className={`app-main${anyCards ? ' app-main--with-bar' : ''}`}>
 
         {anyCards && (
-          <div className="deck-list__label">
+          <div className="deck-list__toolbar">
             <DeckPaperLabel preset={project.preset} />
+            <div className="deck-list__toolbar-actions">
+              <button
+                className="btn deck-list__toolbar-btn deck-list__toolbar-btn--ghost"
+                onClick={() => setPreviewDeckIndex(0)}
+              >
+                See Preview
+              </button>
+              <button
+                className="btn deck-list__toolbar-btn deck-list__toolbar-btn--primary"
+                onClick={() => setShowPaperSizeModal(true)}
+              >
+                Paper Size
+              </button>
+            </div>
           </div>
         )}
 
@@ -612,7 +626,26 @@ function App() {
           return (
             <div key={di} className="deck-section">
 
-              {/* LEFT — card grid and add/full controls */}
+              {project.decks.length > 1 && (
+                <div className="deck-section__header">
+                  <span className="deck-section__label">{`Sheet ${di + 1}`}</span>
+                  <div className="deck-section__header-right">
+                    <button
+                      className="btn btn--ghost deck-section__preview-btn"
+                      onClick={() => setPreviewDeckIndex(di)}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      className="deck-section__remove"
+                      onClick={() => handleRemoveDeck(di)}
+                    >
+                      Remove ×
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="deck-section__body">
                 {deck.cards.length > 0 && (
                   <div className="deck-grid">
@@ -651,46 +684,9 @@ function App() {
                   <p className="deck-full">
                     {isPhotoPaper
                       ? 'Sheet is full.'
-                      : 'Deck is full — remove a card or reduce copies to add more.'}
+                      : 'Sheet is full — remove a card or reduce copies to add more.'}
                   </p>
                 )}
-              </div>
-
-              {/* RIGHT — sticky sidebar: header → paper selector → preview */}
-              <div className="deck-section__sidebar">
-                <div className="deck-section__header">
-                  <span className="deck-section__label">
-                    {project.decks.length > 1 ? `Sheet ${di + 1}` : project.preset.label}
-                  </span>
-                  <div className="deck-section__header-right">
-                    {deck.cards.length > 0 && (
-                      <button
-                        className="btn deck-section__preview-btn"
-                        onClick={() => setPreviewDeckIndex(di)}
-                      >
-                        See Preview
-                      </button>
-                    )}
-                    <button
-                      className="btn deck-section__paper-size-btn"
-                      onClick={() => setShowPaperSizeModal(true)}
-                    >
-                      Change Paper Size
-                    </button>
-                    {project.decks.length > 1 && (
-                      <button
-                        className="deck-section__remove"
-                        onClick={() => handleRemoveDeck(di)}
-                      >
-                        Remove ×
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <SheetPreview
-                  preset={project.preset}
-                  thumbnails={deck.cards.map(c => c.front)}
-                />
               </div>
 
             </div>

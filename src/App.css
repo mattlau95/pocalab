@@ -74,64 +74,61 @@
   margin-bottom: 8px;
 }
 
-.deck-list__label {
-  margin-bottom: 12px;
-}
-
-.deck-section {
-  margin-bottom: 20px;
-}
-
-/* Sidebar: default (mobile) — looks like the old header row */
-.deck-section__sidebar {
+.deck-list__toolbar {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px 32px;
+  gap: 12px;
   margin-bottom: 12px;
   background: #0d0818;
   border-radius: 6px;
   padding: 8px 12px;
 }
 
-.deck-section__header {
+.deck-list__toolbar-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-/* Desktop two-column layout */
-@media (pointer: fine) {
-  .deck-section {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0 28px;
-    align-items: start;
-    margin-bottom: 32px;
-  }
+.deck-list__toolbar-btn {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 12px;
+  height: 32px;
+  border-radius: 4px;
+}
 
-  .deck-section__body {
-    min-width: 0;
-  }
+.deck-list__toolbar-btn--ghost {
+  background: #edd9ff;
+  border: 1px solid var(--primary);
+  color: #0d0818;
+}
 
-  .deck-section__sidebar {
-    position: sticky;
-    top: 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 12px;
-    margin-bottom: 0;
-  }
+.deck-list__toolbar-btn--primary {
+  background: var(--primary-fill);
+  border: none;
+  color: white;
+}
+
+.deck-section {
+  margin-bottom: 20px;
+}
+
+.deck-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .deck-section__label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--foreground-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -155,30 +152,14 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
 .deck-section__preview-btn {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 2px 12px;
-  height: 32px;
-  border-radius: 4px;
-  background: #edd9ff;
-  border: 1px solid var(--primary);
-  color: #0d0818;
-}
-
-.deck-section__paper-size-btn {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 2px 12px;
-  height: 32px;
-  border-radius: 4px;
-  background: var(--primary-fill);
-  border: none;
-  color: white;
+  font-size: 12px;
+  padding: 2px 10px;
+  height: auto;
 }
 
 .deck-section__remove {
@@ -525,7 +506,8 @@
   border-color: var(--border);
 }
 
-/* The paper-size options sit on a dark surface in both themes */
+/* The toolbar and paper-size options sit on a dark surface in both themes */
+.deck-list__toolbar .deck-paper-label,
 .paper-size-option .deck-paper-label {
   color: #fff;
 }
