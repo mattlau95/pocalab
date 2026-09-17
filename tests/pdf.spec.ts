@@ -1,14 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createPhotocardPdf, type PdfSlot } from '../src/utils/pdf'
-import { buildPrintPdf } from '../src/utils/printPdf'
-import { PRESETS, type PrintPreset } from '../src/models/preset'
+import { buildSheetPdf, buildSheetsPdf } from '../src/utils/sheetPdf'
+import { printedSlots, type SheetSlot } from '../src/utils/sheetSlots'
+import { PRESETS } from '../src/models/preset'
 import type { Deck } from '../src/models/deck'
 import { solidPngDataUrl } from './helpers/png'
 import { summarizePdf } from './helpers/pdfOps'
 
-// These pin down exactly what each PDF builder draws, so refactors of the
-// units and PDF code (MAT-724) can prove the output did not change.
+// These pin down exactly what the PDF pipeline draws for every paper size, so
+// refactors of the units and PDF code can prove the output did not change.
 // Update the stored snapshots with: npm test -- --test-update-snapshots
 
 const MM_TO_PT = 72 / 25.4
@@ -22,12 +22,12 @@ const BLUE = solidPngDataUrl(20, 30, [30, 30, 200])
 const GREEN = solidPngDataUrl(20, 30, [30, 160, 60])
 
 test('Letter: fronts fill slots in order, backs are mirrored across the page', async () => {
-  const slots: PdfSlot[] = [
+  const slots: SheetSlot[] = [
     { front: RED, back: BLUE },
     { front: RED, back: null },
     { front: GREEN, back: GREEN },
   ]
-  const [front, back] = await summarizePdf(await createPhotocardPdf(slots, 'letter'))
+  const [front, back] = await summarizePdf(await buildSheetPdf(PRESETS.letter, slots))
 
   assert.deepEqual(front.size, [612, 792])
   assert.equal(front.images.length, 3)
@@ -46,7 +46,7 @@ test('Letter: fronts fill slots in order, backs are mirrored across the page', a
 
 test('A4: page size and a full 3×3 sheet', async () => {
   const slots = Array.from({ length: 9 }, () => ({ front: RED, back: BLUE }))
-  const [front, back] = await summarizePdf(await createPhotocardPdf(slots, 'a4'))
+  const [front, back] = await summarizePdf(await buildSheetPdf(PRESETS.a4, slots))
   close(front.size[0], 595.28, 'A4 width')
   close(front.size[1], 841.89, 'A4 height')
   assert.equal(front.images.length, 9)
@@ -55,14 +55,14 @@ test('A4: page size and a full 3×3 sheet', async () => {
 
 test('Letter/A4: anything past nine slots is ignored', async () => {
   const slots = Array.from({ length: 12 }, () => ({ front: RED, back: BLUE }))
-  const [front, back] = await summarizePdf(await createPhotocardPdf(slots, 'letter'))
+  const [front, back] = await summarizePdf(await buildSheetPdf(PRESETS.letter, slots))
   assert.equal(front.images.length, 9)
   assert.equal(back.images.length, 9)
 })
 
 test('Letter/A4: progress is reported once per slot, starting at zero', async () => {
   const calls: [number, number][] = []
-  await createPhotocardPdf([{ front: RED, back: null }, { front: BLUE, back: null }], 'letter', (d, t) => calls.push([d, t]))
+  await buildSheetPdf(PRESETS.letter, [{ front: RED, back: null }, { front: BLUE, back: null }], (d, t) => calls.push([d, t]))
   assert.deepEqual(calls, [[0, 2], [1, 2], [2, 2]])
 })
 
@@ -74,8 +74,8 @@ function deckOf(count: number, overrides: Partial<Deck> = {}): Deck {
 }
 
 for (const preset of photoPresets) {
-  test(`${preset.label} ${preset.nUp}-up: one image per card, shared back fallback, mirrored backs`, async () => {
-    const [front, back] = await summarizePdf(await buildPrintPdf(preset, deckOf(preset.nUp)))
+  test(`${preset.label}: one image per card, shared back fallback, mirrored backs`, async () => {
+    const [front, back] = await summarizePdf(await buildSheetPdf(preset, printedSlots(deckOf(preset.nUp), preset)))
     close(front.size[0], preset.sheetMm.w * MM_TO_PT, 'sheet width')
     close(front.size[1], preset.sheetMm.h * MM_TO_PT, 'sheet height')
     assert.equal(front.images.length, preset.nUp)
@@ -88,23 +88,32 @@ for (const preset of photoPresets) {
 }
 
 test('photo paper: copies are ignored and extra cards are dropped', async () => {
-  const preset = PRESETS['5x7-2up'] as PrintPreset
+  const preset = PRESETS['5x7-2up']
   const deck = deckOf(3)
   deck.copies['card-0'] = 2
-  const [front] = await summarizePdf(await buildPrintPdf(preset, deck))
+  const [front] = await summarizePdf(await buildSheetPdf(preset, printedSlots(deck, preset)))
   assert.equal(front.images.length, 2)
+})
+
+test('several sheets combine in order, with progress counted across all of them', async () => {
+  const preset = PRESETS['4x6-2up']
+  const calls: [number, number][] = []
+  const bytes = await buildSheetsPdf(preset, [printedSlots(deckOf(2), preset), printedSlots(deckOf(1), preset)], (d, t) => calls.push([d, t]))
+  const pages = await summarizePdf(bytes)
+  assert.deepEqual(pages.map(p => p.images.length), [2, 2, 1, 1])
+  assert.deepEqual(calls, [[0, 3], [1, 3], [2, 3], [2, 3], [3, 3]])
 })
 
 test('photo paper: progress is reported once per card', async () => {
   const calls: [number, number][] = []
-  await buildPrintPdf(PRESETS['5x7-3up'], deckOf(3), (d, t) => calls.push([d, t]))
+  await buildSheetPdf(PRESETS['5x7-3up'], printedSlots(deckOf(3), PRESETS['5x7-3up']), (d, t) => calls.push([d, t]))
   assert.deepEqual(calls, [[0, 3], [1, 3], [2, 3], [3, 3]])
 })
 
 test('drawing operators match the stored snapshot', async (t) => {
-  const letter = await summarizePdf(await createPhotocardPdf(
-    [{ front: RED, back: BLUE }, { front: BLUE, back: null }, { front: GREEN, back: GREEN }], 'letter'))
-  const a4 = await summarizePdf(await createPhotocardPdf([{ front: RED, back: BLUE }], 'a4'))
-  const photo = await Promise.all(photoPresets.map(async p => [p.id, await summarizePdf(await buildPrintPdf(p, deckOf(p.nUp)))] as const))
+  const letter = await summarizePdf(await buildSheetPdf(PRESETS.letter,
+    [{ front: RED, back: BLUE }, { front: BLUE, back: null }, { front: GREEN, back: GREEN }]))
+  const a4 = await summarizePdf(await buildSheetPdf(PRESETS.a4, [{ front: RED, back: BLUE }]))
+  const photo = await Promise.all(photoPresets.map(async p => [p.id, await summarizePdf(await buildSheetPdf(p, printedSlots(deckOf(p.nUp), p)))] as const))
   t.assert.snapshot({ letter, a4, ...Object.fromEntries(photo) })
 })

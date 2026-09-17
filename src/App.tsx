@@ -10,7 +10,7 @@ import { SheetPreview } from './components/SheetPreview'
 import { Modal } from './components/Modal'
 import { createCard } from './models/card'
 import type { Card, CropState } from './models/card'
-import type { Deck } from './models/deck'
+import { isPhotoPaper as isPhotoPaperPreset, printedSlots } from './utils/sheetSlots'
 
 const KO_FI_URL = 'https://ko-fi.com/mattlau95'
 const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
@@ -88,26 +88,6 @@ function AppHeader({ onHome }: { onHome?: () => void }) {
   )
 }
 
-function expandDeck(deck: Deck) {
-  const slots: { front: string | null; back: string | null }[] = []
-  for (const card of deck.cards) {
-    const count = deck.copies[card.id] ?? 1
-    for (let i = 0; i < count; i++) slots.push({ front: card.front, back: card.back ?? deck.sharedBack })
-  }
-  return slots
-}
-
-// The slots each PDF builder actually prints, so the sheet preview matches the
-// download: Letter/A4 repeat each card by its copy count (createPhotocardPdf),
-// photo paper prints each card once (buildPrintPdf ignores copies).
-function printedSlots(deck: Deck, preset: PrintPreset) {
-  const isPhotoPaper = !['letter', 'a4'].includes(preset.id)
-  const slots = isPhotoPaper
-    ? deck.cards.map(card => ({ front: card.front, back: card.back ?? deck.sharedBack }))
-    : expandDeck(deck)
-  return slots.slice(0, preset.nUp)
-}
-
 type Step =
   | { id: 'idle' }
   | { id: 'crop-front'; imageSrc: string; editingPending?: Card; initialState?: CropState; targetDeck: number }
@@ -138,7 +118,7 @@ function App() {
 
   const anyCards = project.decks.some(d => d.cards.length > 0)
   const totalCards = project.decks.reduce((sum, d) => sum + d.cards.length, 0)
-  const isPhotoPaper = !['letter', 'a4'].includes(project.preset.id)
+  const isPhotoPaper = isPhotoPaperPreset(project.preset)
 
   useBeforeUnload(anyCards || step.id !== 'idle')
 
@@ -175,16 +155,11 @@ function App() {
     try {
       const deck = project.decks[deckIndex]
       if (!deck) return
-      if (isPhotoPaper) {
-        const { buildPrintPdf } = await import('./utils/printPdf')
-        const bytes = await buildPrintPdf(project.preset, deck, onProgress)
-        triggerDownload(bytes, project.decks.length > 1 ? `sheet-${deckIndex + 1}.pdf` : 'sheet-1.pdf')
-      } else {
-        const { createPhotocardPdf } = await import('./utils/pdf')
-        const paperSize = (project.preset.id === 'a4' ? 'a4' : 'letter') as 'letter' | 'a4'
-        const bytes = await createPhotocardPdf(expandDeck(deck), paperSize, onProgress)
-        triggerDownload(bytes, 'photocards.pdf')
-      }
+      const { buildSheetPdf } = await import('./utils/sheetPdf')
+      const bytes = await buildSheetPdf(project.preset, printedSlots(deck, project.preset), onProgress)
+      const filename = !isPhotoPaper ? 'photocards.pdf'
+        : project.decks.length > 1 ? `sheet-${deckIndex + 1}.pdf` : 'sheet-1.pdf'
+      triggerDownload(bytes, filename)
       setShowFeedbackPrompt(true)
     } catch {
       setExportError('PDF generation failed — please try again.')
@@ -200,20 +175,9 @@ function App() {
     setExportProgress(null)
     setExportError(null)
     try {
-      const { buildPrintPdf } = await import('./utils/printPdf')
-      const { PDFDocument } = await import('pdf-lib')
-      const combined = await PDFDocument.create()
-      const decks = project.decks.filter(d => d.cards.length > 0)
-      const total = decks.reduce((n, d) => n + Math.min(d.cards.length, project.preset.nUp), 0)
-      let offset = 0
-      for (const d of decks) {
-        const sheetBytes = await buildPrintPdf(project.preset, d, (done) => setExportProgress({ done: offset + done, total }))
-        offset += Math.min(d.cards.length, project.preset.nUp)
-        const sheetDoc = await PDFDocument.load(sheetBytes)
-        const pages = await combined.copyPages(sheetDoc, sheetDoc.getPageIndices())
-        pages.forEach(p => combined.addPage(p))
-      }
-      const bytes = await combined.save()
+      const { buildSheetsPdf } = await import('./utils/sheetPdf')
+      const sheets = project.decks.filter(d => d.cards.length > 0).map(d => printedSlots(d, project.preset))
+      const bytes = await buildSheetsPdf(project.preset, sheets, (done, total) => setExportProgress({ done, total }))
       triggerDownload(bytes, 'photocards-all.pdf')
       setShowFeedbackPrompt(true)
     } catch {
