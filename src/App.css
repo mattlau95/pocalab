@@ -489,7 +489,7 @@
 .print-guidance {
   font-size: 13px;
   color: var(--foreground-muted);
-  max-width: 420px;
+  max-width: 440px;
   text-align: center;
 }
 
@@ -505,9 +505,21 @@
 
 .print-guidance summary::-webkit-details-marker { display: none; }
 
-.print-guidance p {
-  margin: 8px 0 0;
+.print-guidance__steps {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  text-align: left;
+}
+
+.print-guidance__steps li {
+  margin-bottom: 8px;
   line-height: 1.5;
+}
+
+.print-guidance__result {
+  margin: 10px 0 0;
+  line-height: 1.5;
+  text-align: left;
 }
 
 .paper-size-options {
