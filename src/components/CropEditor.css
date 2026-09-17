@@ -184,6 +184,7 @@
 /* 24px tall so the whole row is a pointer target (WCAG 2.5.8); the track stays thin. */
 .ctrl-slider {
   flex: 1;
+  min-width: 0;
   height: 24px;
   accent-color: var(--primary);
   cursor: pointer;
@@ -396,6 +397,15 @@
 @media (max-width: 639px) {
   .crop-viewport {
     height: clamp(320px, 55vw, 440px);
+  }
+
+  /* Narrower labels and readouts so the slider keeps a usable width. */
+  .control-label {
+    width: 62px;
+  }
+
+  .ctrl-value {
+    width: 34px;
   }
 
   .crop-key {
