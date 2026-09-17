@@ -28,7 +28,6 @@ test('cancelling the front crop returns to the empty start screen', async () => 
   await page.getByRole('button', { name: 'Cancel' }).click()
   assert.equal(await confirmCrop().count(), 0)
   assert.equal(await deckCards(), 0)
-  assert.equal(app.dialogs.length, 0)
 })
 
 test('Start over on the back step asks first, and keeps the step if dismissed', async () => {
@@ -36,12 +35,12 @@ test('Start over on the back step asks first, and keeps the step if dismissed', 
   await confirmCrop().click()
   await page.getByText('Step 2 of 2 — Add the card back').waitFor()
 
-  app.dismissNextDialog()
   await page.getByRole('button', { name: 'Start over' }).click()
-  assert.match(app.dialogs.at(-1)!, /Discard this card/)
+  await app.answer(/Discard this card\? Your cropped front image will be lost\./, 'Cancel')
   assert.equal(await page.getByText('Step 2 of 2 — Add the card back').count(), 1)
 
   await page.getByRole('button', { name: 'Start over' }).click()
+  await app.answer(/Discard this card/, 'Discard')
   await page.getByText('Step 2 of 2 — Add the card back').waitFor({ state: 'detached' })
   assert.equal(await deckCards(), 0)
 })
@@ -135,29 +134,53 @@ test('editing a back shared by other cards asks how many cards to update', async
   assert.notEqual(finalBacks[1], backs[1])
 })
 
-test('removing a card asks in a dialog, and Cancel keeps it', async () => {
+test('removing a card asks in a dialog, and can be undone', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 120 }]])
   await page.getByRole('button', { name: 'Remove card' }).first().click()
-  await page.getByRole('button', { name: 'Cancel' }).click()
+  await app.answer(/Remove this card\?/, 'Cancel')
   assert.equal(await deckCards(), 2)
 
   await page.getByRole('button', { name: 'Remove card' }).first().click()
-  await page.getByRole('button', { name: 'Remove', exact: true }).click()
+  await app.answer(/Remove this card\?/, 'Remove')
   await page.waitForFunction(() => document.querySelectorAll('.deck-card').length === 1)
   assert.equal(await headerCount(), '1 / 9 cards')
+
+  const toast = page.locator('.toast--undo')
+  assert.match(await toast.innerText(), /Card removed/)
+  await toast.getByRole('button', { name: 'Undo' }).click()
+  await page.waitForFunction(() => document.querySelectorAll('.deck-card').length === 2)
+  await page.locator('.app-header__save--saved').waitFor()
+  const project = await app.stored()
+  assert.deepEqual(project!.decks[0].cards.map(c => c.id), ['a', 'b'])
+})
+
+test('Undo is withdrawn once the deck changes again', async () => {
+  await app.seed('letter', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 120 }]])
+  await page.getByRole('button', { name: 'Remove card' }).first().click()
+  await app.answer(/Remove this card\?/, 'Remove')
+  await page.locator('.toast--undo').waitFor()
+  await page.getByRole('button', { name: 'Increase copies' }).first().click()
+  await page.locator('.toast--undo').waitFor({ state: 'detached' })
+  assert.equal(await deckCards(), 1)
 })
 
 test('removing a sheet with cards asks first', async () => {
   await app.seed('4x6-2up', [[{ id: 'a', hue: 0 }, { id: 'b', hue: 60 }], [{ id: 'c', hue: 120 }]])
   assert.equal(await headerCount(), '3 cards · 2 sheets')
 
-  app.dismissNextDialog()
   await page.getByRole('button', { name: 'Remove ×' }).last().click()
-  assert.match(app.dialogs.at(-1)!, /Remove Sheet 2 and its 1 card\?/)
+  await app.answer(/Remove Sheet 2 and its 1 card\?/, 'Cancel')
   assert.equal(await deckCards(), 3)
 
   await page.getByRole('button', { name: 'Remove ×' }).last().click()
+  await app.answer(/Remove Sheet 2/, 'Remove sheet')
   await page.waitForFunction(() => document.querySelectorAll('.deck-card').length === 2)
+
+  const toast = page.locator('.toast--undo')
+  assert.match(await toast.innerText(), /Sheet 2 removed/)
+  await toast.getByRole('button', { name: 'Undo' }).click()
+  await page.waitForFunction(() => document.querySelectorAll('.deck-card').length === 3)
+  assert.equal(await headerCount(), '3 cards · 2 sheets')
 })
 
 test('a card can be moved to another sheet with room', async () => {
@@ -208,12 +231,13 @@ test('Try again after a failed export repeats that same export', async () => {
 
 test('clicking the logo with cards asks, then clears the project', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }]])
-  app.dismissNextDialog()
-  await page.locator('.app-header__brand').click()
-  assert.match(app.dialogs.at(-1)!, /Clear your deck\? This cannot be undone\./)
+  const logo = page.getByRole('link', { name: 'pocalab, start over' })
+  await logo.click()
+  await app.answer(/Clear your deck\? This cannot be undone\./, 'Cancel')
   assert.equal(await deckCards(), 1)
 
-  await page.locator('.app-header__brand').click()
+  await logo.click()
+  await app.answer(/Clear your deck/, 'Clear deck')
   await page.waitForFunction(() => document.querySelectorAll('.deck-card').length === 0)
   await page.waitForTimeout(300)
   const project = await app.stored()
@@ -225,7 +249,7 @@ test('clicking the logo with cards asks, then clears the project', async () => {
 test('clicking the logo mid-crop with no cards cancels the crop', async () => {
   await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('front.png', 300, 450, [200, 0, 0]))
   await confirmCrop().waitFor()
-  await page.locator('.app-header__brand').click()
-  assert.match(app.dialogs.at(-1)!, /Cancel this crop and start over\?/)
+  await page.getByRole('link', { name: 'pocalab, start over' }).click()
+  await app.answer(/Cancel this crop and start over\?/, 'Start over')
   await confirmCrop().waitFor({ state: 'detached' })
 })

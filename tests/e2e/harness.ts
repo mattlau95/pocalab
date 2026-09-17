@@ -20,9 +20,9 @@ export function setupApp({ mobile = false } = {}) {
   let context: BrowserContext
   let page: Page
   let baseUrl: string
-  // window.confirm prompts are accepted unless a test asks to dismiss the next one.
-  let dialogs: string[] = []
-  let dismissNext = false
+  // The app asks questions in its own dialogs; any native window.confirm/alert fails the test.
+  // The "leave site?" prompt from unsaved-work protection is expected on reload and accepted.
+  let nativeDialogs: string[] = []
 
   before(async () => {
     assert.ok(existsSync('dist/index.html'), 'run `npm run build` before the e2e tests')
@@ -44,11 +44,11 @@ export function setupApp({ mobile = false } = {}) {
     // tsx compiles page.evaluate callbacks with an esbuild __name helper the page doesn't have.
     await context.addInitScript('globalThis.__name = (fn) => fn')
     page = await context.newPage()
-    dialogs = []
-    dismissNext = false
+    nativeDialogs = []
     page.on('dialog', d => {
-      dialogs.push(d.message())
-      if (dismissNext) { dismissNext = false; void d.dismiss() } else void d.accept()
+      if (d.type() === 'beforeunload') { void d.accept(); return }
+      nativeDialogs.push(`${d.type()}: ${d.message()}`)
+      void d.dismiss()
     })
     await page.goto(baseUrl)
     await page.waitForLoadState('networkidle')
@@ -56,6 +56,7 @@ export function setupApp({ mobile = false } = {}) {
 
   afterEach(async () => {
     await context?.close()
+    assert.deepEqual(nativeDialogs, [], 'the app opened a native browser dialog')
   })
 
   async function reload() {
@@ -120,8 +121,14 @@ export function setupApp({ mobile = false } = {}) {
 
   return {
     get page() { return page },
-    get dialogs() { return dialogs },
-    dismissNextDialog() { dismissNext = true },
+    // Answers the app's confirmation dialog, checking its question first.
+    async answer(question: RegExp, button: string) {
+      const dialog = page.getByRole('alertdialog')
+      await dialog.waitFor()
+      assert.match(await dialog.innerText(), question)
+      await dialog.getByRole('button', { name: button, exact: true }).click()
+      await dialog.waitFor({ state: 'detached' })
+    },
     reload,
     seed,
     stored,

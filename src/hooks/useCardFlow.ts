@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createCard, type Card, type CropState } from '../models/card'
 import type { Project } from '../models/deck'
 import type { useProject } from './useProject'
+import type { Confirm } from './useConfirm'
 import { revokeBlobUrl } from '../utils/blobUrls'
 
 // The add-a-card and edit-a-card flows as a state machine. 'idle' is the deck
@@ -54,7 +55,7 @@ function releaseStep(step: Step, project: Project) {
   }
 }
 
-export function useCardFlow({ project, addCard, updateCard, setSharedBack, resetProject }: ProjectApi) {
+export function useCardFlow({ project, addCard, updateCard, setSharedBack, resetProject }: ProjectApi, confirm: Confirm) {
   const [step, setStep] = useState<Step>({ id: 'idle' })
   const [setAsShared, setSetAsShared] = useState(false)
   const [cardAdded, setCardAdded] = useState(false)
@@ -69,7 +70,7 @@ export function useCardFlow({ project, addCard, updateCard, setSharedBack, reset
   }
 
   // Cancel steps back one stage (or out of the flow), asking before losing a cropped front.
-  function cancel() {
+  async function cancel() {
     if (step.id === 'crop-front') {
       revokeBlobUrl(step.imageSrc)
       if (step.editingPending) {
@@ -80,7 +81,7 @@ export function useCardFlow({ project, addCard, updateCard, setSharedBack, reset
       return
     }
     if (step.id === 'upload-back') {
-      if (!window.confirm('Discard this card? Your cropped front image will be lost.')) return
+      if (!(await confirm({ message: 'Discard this card? Your cropped front image will be lost.', confirmLabel: 'Discard', destructive: true }))) return
       releaseStep(step, project)
       setSetAsShared(false)
       setStep({ id: 'idle' })
@@ -95,13 +96,13 @@ export function useCardFlow({ project, addCard, updateCard, setSharedBack, reset
   }
 
   // The logo: clears the whole project (and any step in progress) after confirming.
-  function goHome() {
+  async function goHome() {
     const inFlow = step.id !== 'idle'
     if (!anyCards && !inFlow) return
-    const msg = anyCards
-      ? `Clear your deck${inFlow ? ' and cancel this crop' : ''}? This cannot be undone.`
-      : 'Cancel this crop and start over?'
-    if (!window.confirm(msg)) return
+    const ok = anyCards
+      ? await confirm({ message: `Clear your deck${inFlow ? ' and cancel this crop' : ''}? This cannot be undone.`, confirmLabel: 'Clear deck', destructive: true })
+      : await confirm({ message: 'Cancel this crop and start over?', confirmLabel: 'Start over', cancelLabel: 'Keep cropping' })
+    if (!ok) return
     releaseStep(step, project)
     resetProject()
     setStep({ id: 'idle' })
@@ -134,10 +135,10 @@ export function useCardFlow({ project, addCard, updateCard, setSharedBack, reset
     })
   }
 
-  function startBack(file: File) {
+  async function startBack(file: File) {
     if (step.id !== 'upload-back') return
     if (step.pendingBackSrc) {
-      if (!window.confirm('Replace the back image you already selected?')) return
+      if (!(await confirm({ message: 'Replace the back image you already selected?', confirmLabel: 'Replace' }))) return
       revokeBlobUrl(step.pendingBackSrc)
     }
     setStep({ id: 'crop-back', imageSrc: URL.createObjectURL(file), pendingCard: step.pendingCard, setAsShared, targetDeck: step.targetDeck })

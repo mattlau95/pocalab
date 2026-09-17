@@ -109,9 +109,11 @@
   background: var(--surface);
 }
 
+/* Edit, Replace and the move controls keep a 24px minimum target (WCAG 2.5.8). */
 .deck-card__edit {
   font-size: 11px;
   padding: 4px 8px;
+  min-height: 24px;
   border-radius: 4px;
   border: 1px solid var(--border);
   background: transparent;
@@ -127,6 +129,7 @@
 .deck-card__replace {
   font-size: 11px;
   padding: 4px 8px;
+  min-height: 24px;
   border-radius: 4px;
   border: 1px solid var(--border);
   background: transparent;
@@ -208,28 +211,6 @@
   }
 }
 
-.deck-card__remove-prompt {
-  font-size: 14px;
-  color: var(--foreground);
-  margin-bottom: 16px;
-}
-
-.deck-card__remove-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.deck-card__remove-yes {
-  background: var(--destructive-fill) !important;
-  border-color: var(--destructive-fill) !important;
-  color: #fff !important;
-}
-
-.deck-card__remove-yes:hover {
-  opacity: 0.88;
-}
-
 .deck-card__move {
   display: flex;
   justify-content: center;
@@ -242,6 +223,7 @@
   border: none;
   cursor: pointer;
   padding: 2px 6px;
+  min-height: 24px;
   border-radius: 4px;
   transition: color 0.1s;
 }
@@ -266,16 +248,18 @@
 .deck-card__move-btn {
   font-size: 11px;
   padding: 2px 8px;
+  min-height: 24px;
   border-radius: 4px;
   background: var(--primary-fill);
   color: var(--primary-foreground);
   border: none;
   cursor: pointer;
-  transition: opacity 0.1s;
+  transition: background 0.1s;
 }
 
+/* A darker fill, not opacity: fading the button drops white text below 4.5:1. */
 .deck-card__move-btn:hover {
-  opacity: 0.85;
+  background: var(--primary-fill-hover);
 }
 
 .deck-card__move-cancel {
@@ -285,4 +269,6 @@
   border: none;
   cursor: pointer;
   padding: 2px 4px;
+  min-width: 24px;
+  min-height: 24px;
 }
