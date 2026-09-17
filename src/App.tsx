@@ -128,7 +128,9 @@ function App() {
   const [exportErrorDeckIndex, setExportErrorDeckIndex] = useState<number | null>(null)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false)
   const [splitToast, setSplitToast] = useState<string | null>(null)
-  const [storageToast, setStorageToast] = useState<string | null>(null)
+  // useProject reports a write failure once; the toast shows it until dismissed.
+  const [storageToastDismissed, setStorageToastDismissed] = useState(false)
+  const storageToast = storageToastDismissed ? null : storageWriteError
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
   const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
   const prevDeckCount = useRef(project.decks.length)
@@ -151,10 +153,6 @@ function App() {
     justSwitchedPreset.current = false
     prevDeckCount.current = project.decks.length
   }, [project.decks.length])
-
-  useEffect(() => {
-    if (storageWriteError) setStorageToast(storageWriteError)
-  }, [storageWriteError])
 
   function firstAvailableDeck() {
     return Math.max(0, project.decks.findIndex(d => deckTotal(d) < nUp))
@@ -844,7 +842,7 @@ function App() {
       {storageToast && (
         <div className="toast toast--error" role="alert" aria-live="assertive">
           {storageToast}
-          <button className="toast__dismiss" onClick={() => setStorageToast(null)} aria-label="Dismiss">×</button>
+          <button className="toast__dismiss" onClick={() => setStorageToastDismissed(true)} aria-label="Dismiss">×</button>
         </div>
       )}
 
