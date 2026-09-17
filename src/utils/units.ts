@@ -8,9 +8,10 @@ export const PT_PER_INCH = 72
 
 export const MM_TO_PT = PT_PER_INCH / MM_PER_INCH
 
-// Rounds down: 59 mm is 696.85 px at 300 DPI, so the bleed-size crop is 696 px wide.
+// Rounds to the nearest pixel, which is the closest whole-pixel match for the
+// physical size: 59 mm is 696.85 px at 300 DPI, so a bleed-size crop is 697 px.
 export function mmToPx(mm: number): number {
-  return Math.floor((mm * DPI) / MM_PER_INCH)
+  return Math.round((mm * DPI) / MM_PER_INCH)
 }
 
 export function mmToPt(mm: number): number {

@@ -44,7 +44,7 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
   const justSwitchedPreset = useRef(false)
 
   const anyCards = project.decks.some(d => d.cards.length > 0)
-  const totalCards = project.decks.reduce((sum, d) => sum + d.cards.length, 0)
+  const totalCards = project.decks.reduce((sum, d) => sum + deckTotal(d), 0)
   const isPhotoPaper = isPhotoPaperPreset(project.preset)
   const { exporting, label: exportLabel, error: exportError } = exporter
 
@@ -132,6 +132,9 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
                 <SheetPreview preset={project.preset} thumbnails={slots.map(s => s.back)} />
               </div>
             </div>
+            <p className="sheet-preview-pair__note">
+              Backs are shown in the same order as the fronts. The PDF flips the back page for you, so each back prints behind its own front.
+            </p>
           </Modal>
         )
       })()}

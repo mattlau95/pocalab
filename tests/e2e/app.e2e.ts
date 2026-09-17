@@ -2,7 +2,7 @@ import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { PDFDocument } from 'pdf-lib'
 import { setupApp, pngFile } from './harness'
-import { CARD_BLEED } from '../../src/utils/dimensions'
+import { CARD_BLEED, LEGACY_BLEED_WIDTH_PX } from '../../src/utils/dimensions'
 
 const app = setupApp()
 const seed = app.seed
@@ -137,14 +137,17 @@ test('crop editor: add a card end to end, with undo, redo and the hex colour fie
   assert.equal(await page.locator('.deck-card').count(), 1)
 })
 
-test('crop editor: a re-uploaded bleed-size export is auto-filled to the frame', async () => {
-  await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('bleed.png', CARD_BLEED.widthPx, CARD_BLEED.heightPx, [10, 200, 200]))
-  await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
-  const zoomValue = page.locator('.ctrl-value').nth(1)
-  // Fill is the zoom where the image covers the frame; auto-fill should already be there.
-  await page.waitForTimeout(300)
-  const autoZoom = await zoomValue.textContent()
-  assert.notEqual(autoZoom, '100%', 'auto-fill changed the zoom from its default')
-  await page.getByRole('button', { name: 'Fill' }).click()
-  assert.equal(await zoomValue.textContent(), autoZoom)
-})
+// Current exports are CARD_BLEED wide; ones from before round-to-nearest are a pixel narrower.
+for (const [label, width] of [['current', CARD_BLEED.widthPx], ['pre-697', LEGACY_BLEED_WIDTH_PX]] as const) {
+  test(`crop editor: a re-uploaded bleed-size export (${label}, ${width}px) is auto-filled to the frame`, async () => {
+    await page.locator('.upload-zone input[type=file]').first().setInputFiles(pngFile('bleed.png', width, CARD_BLEED.heightPx, [10, 200, 200]))
+    await page.getByRole('button', { name: 'Confirm crop' }).waitFor()
+    const zoomValue = page.locator('.ctrl-value').nth(1)
+    // Fill is the zoom where the image covers the frame; auto-fill should already be there.
+    await page.waitForTimeout(300)
+    const autoZoom = await zoomValue.textContent()
+    assert.notEqual(autoZoom, '100%', 'auto-fill changed the zoom from its default')
+    await page.getByRole('button', { name: 'Fill' }).click()
+    assert.equal(await zoomValue.textContent(), autoZoom)
+  })
+}

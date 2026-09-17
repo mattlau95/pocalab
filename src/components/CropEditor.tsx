@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
-import { CARD_BLEED, CARD_TRIM, CARD_SAFE } from '../utils/dimensions'
+import { CARD_BLEED, CARD_TRIM, CARD_SAFE, LEGACY_BLEED_WIDTH_PX } from '../utils/dimensions'
 import { getCroppedDataUrl } from '../utils/cropImage'
 import type { CropState } from '../models/card'
 import './CropEditor.css'
@@ -91,7 +91,10 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
   const [prevAutoFillKey, setPrevAutoFillKey] = useState<string | null>(null)
   if (autoFillKey !== prevAutoFillKey) {
     setPrevAutoFillKey(autoFillKey)
-    if (imgSize && renderedMedia && imgSize.w === CARD_BLEED.widthPx && imgSize.h === CARD_BLEED.heightPx) {
+    const isBleedSize = imgSize
+      && (imgSize.w === CARD_BLEED.widthPx || imgSize.w === LEGACY_BLEED_WIDTH_PX)
+      && imgSize.h === CARD_BLEED.heightPx
+    if (isBleedSize && renderedMedia) {
       const fillZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
         Math.max(cropSize.width / renderedMedia.width, cropSize.height / renderedMedia.height)
       ))
