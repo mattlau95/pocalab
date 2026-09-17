@@ -18,7 +18,7 @@ pocalab does the mechanical part deterministically. The same nine cards now take
 
 1. **Crop.** Drop in a photo. The editor shows three nested guides: bleed (59 × 89 mm, the image fills to here), trim (55 × 85 mm, where you cut) and safe (51 × 81 mm, keep faces and text inside). Rotate, zoom, pan with the mouse or arrow keys, pick a background colour, and confirm. The crop is rasterised to exactly 697 × 1051 px, which is 300 DPI at bleed size (696.85 × 1051.18 rounded to whole pixels).
 2. **Deck.** Add a back for the card, or reuse one back for the whole deck. Set copy counts. Pick a paper size: US Letter or A4 at nine cards a sheet, or 4 × 6 and 5 × 7 photo paper at two to four cards a sheet. The sheet preview updates live.
-3. **Print.** Download a two-page PDF. Page one is the fronts with crop marks; page two is the backs, mirrored for a long-edge duplex flip so each back lands behind its front.
+3. **Print.** Download a two-page PDF. Page one is the fronts with crop marks; page two is the backs, mirrored for a long-edge duplex flip so each back lands behind its front. The deck view lists the print-dialog settings that keep the cards at exact size; [docs/printing.md](docs/printing.md) has the full version.
 
 ![The deck view: three cropped cards with front and back thumbnails and copy counts, a sheet preview in a sticky sidebar, and a Download PDF button.](docs/images/deck.png)
 
@@ -123,6 +123,7 @@ WCAG 2.2 AA is the bar. The repo keeps its audit reports (`docs/audits/`) and th
 
 ## More
 
+- [Printing guide](docs/printing.md) — the print-dialog settings that keep cards at exact size.
 - [Devlog](docs/DEVLOG.md), including [why exact print size is not trivial](docs/DEVLOG.md#the-catch--why-its-not-trivial) and the [measured outcome](docs/DEVLOG.md#from-45-minutes-to-12).
 - [Case study on matthewclau.com](https://www.matthewclau.com/projects/pocalab.html).
 

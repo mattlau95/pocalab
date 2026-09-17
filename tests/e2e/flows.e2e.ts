@@ -199,6 +199,25 @@ test('the header counts copies, not just cards, across sheets', async () => {
   assert.equal(await headerCount(), '8 cards · 2 sheets')
 })
 
+test('print settings are available for every paper size, with the validated values', async () => {
+  await app.seed('letter', [[{ id: 'a', hue: 0 }]])
+  const guidance = page.locator('.print-guidance')
+  await guidance.evaluate(d => { (d as HTMLDetailsElement).open = true })
+  let text = await guidance.innerText()
+  assert.match(text, /Actual size/)
+  assert.match(text, /Borderless off/)
+  assert.match(text, /long edge/)
+  assert.match(text, /Paper Size to Letter/)
+  assert.match(text, /cassette auto-duplex/)
+
+  await page.getByRole('button', { name: 'Paper Size' }).click()
+  await page.locator('.paper-size-option', { hasText: '4×6"' }).click()
+  await guidance.evaluate(d => { (d as HTMLDetailsElement).open = true })
+  text = await guidance.innerText()
+  assert.match(text, /Paper Size to 4 × 6 in/)
+  assert.match(text, /photo or matte profile/)
+})
+
 test('the sheet preview explains that the back page is flipped when printed', async () => {
   await app.seed('letter', [[{ id: 'a', hue: 0 }]])
   await page.getByRole('button', { name: 'See Preview' }).click()

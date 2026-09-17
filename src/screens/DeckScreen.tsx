@@ -10,6 +10,7 @@ import { DeckCard } from '../components/DeckCard'
 import { ImageUpload } from '../components/ImageUpload'
 import { SheetPreview } from '../components/SheetPreview'
 import { Modal } from '../components/Modal'
+import { PrintGuidance } from '../components/PrintGuidance'
 import { isPhotoPaper as isPhotoPaperPreset, printedSlots } from '../utils/sheetSlots'
 
 const FEEDBACK_FORM_URL = 'https://forms.gle/j3aj9NYF35ZJDkSn9'
@@ -289,12 +290,7 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
           {isPhotoPaper && project.preset.id === '5x7-4up' && (
             <p className="deck-actions__hint">Tight layout — near-perfect registration required.</p>
           )}
-          {isPhotoPaper && (
-            <details className="print-guidance">
-              <summary>ET-8550 print tips</summary>
-              <p>Feed through the <strong>rear straight pass</strong>, not the front cassette. Enable <strong>borderless</strong> for the sheet size. Set media type to the matching photo/matte profile. Allow extra dry time before laminating.</p>
-            </details>
-          )}
+          <PrintGuidance preset={project.preset} />
           <div className="deck-actions__buttons">
             {project.decks.map((deck, di) => deck.cards.length > 0 && (
               <button key={di} className="btn btn--primary" onClick={() => exporter.exportSheet(di)} disabled={exporting}>
