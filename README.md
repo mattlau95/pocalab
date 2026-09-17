@@ -1,5 +1,7 @@
 # pocalab — a K-pop photocard maker
 
+[![CI](https://github.com/mattlau95/pocalab/actions/workflows/ci.yml/badge.svg)](https://github.com/mattlau95/pocalab/actions/workflows/ci.yml)
+
 Print K-pop photocards at exact size from your browser. Upload a photo, crop it to the official card spec, build a deck, and download a double-sided PDF that comes out of a home printer at 55 × 85 mm with the back registered to the front.
 
 **Live:** [pocalab.app](https://pocalab.app) · no account, no backend, nothing to install.
@@ -89,7 +91,7 @@ src/
     ├── printLayout.ts     # n-up geometry and validity check
     ├── printPdf.ts        # photo-paper PDFs, duplex mirror, crop marks
     ├── layout.ts, pdf.ts  # Letter/A4 3×3 PDF
-tests/                     # layout geometry tests (node:test)
+tests/                     # node:test unit tests; e2e/ drives the built app with Playwright
 docs/
 ├── DEVLOG.md              # build log, session by session
 ├── audits/                # UX / a11y audit reports, dated
@@ -103,7 +105,8 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build to dist/
 npm run lint
-node --test tests/printLayout.spec.ts
+npm test           # unit tests: print layout geometry and PDF output
+npm run test:e2e   # browser tests against the production build (run npm run build first)
 ```
 
 Deployed on Vercel: every push to `main` goes to production, and other branches get preview URLs. See [docs/deploy.md](docs/deploy.md).

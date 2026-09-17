@@ -47,8 +47,6 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
   const [renderedMedia, setRenderedMedia] = useState<{ width: number; height: number } | null>(null)
   const [cropSize, setCropSize] = useState(DISPLAY_CROP)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const cropRef = useRef(crop)
-  cropRef.current = crop
   const [isViewportFocused, setIsViewportFocused] = useState(false)
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window
 
@@ -71,63 +69,70 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
     return () => ro.disconnect()
   }, [])
 
-  // Detect natural image size; reset rendered media so stale dims don't trigger auto-fill
-  useEffect(() => {
+  // Reset rendered media when the image changes so stale dims don't trigger auto-fill
+  const [prevImageSrc, setPrevImageSrc] = useState(imageSrc)
+  if (imageSrc !== prevImageSrc) {
+    setPrevImageSrc(imageSrc)
     setRenderedMedia(null)
+  }
+
+  // Detect natural image size
+  useEffect(() => {
     const img = new Image()
     img.onload = () => setImgSize({ w: img.naturalWidth, h: img.naturalHeight })
     img.src = imageSrc
   }, [imageSrc])
 
-  // MAT-290: auto-fill when a bleed-size export is re-uploaded
-  // Fires after both imgSize and renderedMedia are available
-  useEffect(() => {
-    if (!imgSize || !renderedMedia) return
-    if (imgSize.w === CARD_BLEED.widthPx && imgSize.h === CARD_BLEED.heightPx) {
+  // MAT-290: auto-fill when a bleed-size export is re-uploaded. Runs once both
+  // sizes are known, and again whenever either size or the crop box changes.
+  const autoFillKey = imgSize && renderedMedia
+    ? `${imgSize.w}x${imgSize.h}|${renderedMedia.width}x${renderedMedia.height}|${cropSize.width}x${cropSize.height}`
+    : null
+  const [prevAutoFillKey, setPrevAutoFillKey] = useState<string | null>(null)
+  if (autoFillKey !== prevAutoFillKey) {
+    setPrevAutoFillKey(autoFillKey)
+    if (imgSize && renderedMedia && imgSize.w === CARD_BLEED.widthPx && imgSize.h === CARD_BLEED.heightPx) {
       const fillZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM,
         Math.max(cropSize.width / renderedMedia.width, cropSize.height / renderedMedia.height)
       ))
       setZoom(fillZoom)
       setCrop({ x: 0, y: 0 })
     }
-  }, [imgSize, renderedMedia, cropSize])
-
-  // Keep hex text input in sync when bgColor changes externally (color picker, eyedropper, undo/redo)
-  useEffect(() => { setHexDraft(bgColor) }, [bgColor])
-
-  // Undo / redo — stored in refs so handlers always see current values
-  const historyRef = useRef<Snapshot[]>([
-    initialState ?? { crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }
-  ])
-  const histIdxRef = useRef(0)
-  const [histTick, setHistTick] = useState(0) // incremented to re-render button disabled states
-
-  function pushHistory(snap: Snapshot) {
-    historyRef.current = [...historyRef.current.slice(0, histIdxRef.current + 1), snap]
-    histIdxRef.current = historyRef.current.length - 1
-    setHistTick(t => t + 1)
   }
 
-  function undo() {
-    if (histIdxRef.current <= 0) return
-    histIdxRef.current--
-    const s = historyRef.current[histIdxRef.current]
+  // Keep hex text input in sync when bgColor changes externally (color picker, eyedropper, undo/redo)
+  const [prevBgColor, setPrevBgColor] = useState(bgColor)
+  if (bgColor !== prevBgColor) {
+    setPrevBgColor(bgColor)
+    setHexDraft(bgColor)
+  }
+
+  // Undo / redo
+  const [history, setHistory] = useState<{ stack: Snapshot[]; index: number }>(() => ({
+    stack: [initialState ?? { crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, bgColor: DEFAULT_BG }],
+    index: 0,
+  }))
+
+  function pushHistory(snap: Snapshot) {
+    setHistory(h => ({ stack: [...h.stack.slice(0, h.index + 1), snap], index: h.index + 1 }))
+  }
+
+  function restore(index: number) {
+    const s = history.stack[index]
     setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor); setFade(s.fade ?? 0)
-    setHistTick(t => t + 1)
+    setHistory(h => ({ ...h, index }))
+  }
+
+  const canUndo = history.index > 0
+  const canRedo = history.index < history.stack.length - 1
+
+  function undo() {
+    if (canUndo) restore(history.index - 1)
   }
 
   function redo() {
-    if (histIdxRef.current >= historyRef.current.length - 1) return
-    histIdxRef.current++
-    const s = historyRef.current[histIdxRef.current]
-    setCrop(s.crop); setZoom(s.zoom); setRotation(s.rotation); setBgColor(s.bgColor); setFade(s.fade ?? 0)
-    setHistTick(t => t + 1)
+    if (canRedo) restore(history.index + 1)
   }
-
-  // histTick is read here so React includes it in the render dependency — if we
-  // never reference it the compiler may strip the setState calls entirely.
-  const canUndo = histTick >= 0 && histIdxRef.current > 0
-  const canRedo = histTick >= 0 && histIdxRef.current < historyRef.current.length - 1
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels)
@@ -222,7 +227,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
         }}
         onKeyUp={(e) => {
           if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
-          pushHistory({ crop: cropRef.current, zoom, rotation, bgColor, fade })
+          pushHistory({ crop, zoom, rotation, bgColor, fade })
         }}
       >
         <Cropper
