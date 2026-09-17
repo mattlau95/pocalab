@@ -12,7 +12,7 @@ pocalab is a static Vite build hosted on Vercel. There is no backend, no environ
 So the release process is:
 
 1. Work on a branch and open a PR against `main`.
-2. Check the PR's Vercel preview (the link is in the PR's checks and deployments).
+2. Wait for CI to pass, and check the PR's Vercel preview (the link is in the PR's checks and deployments).
 3. Merge the PR. The merge commit on `main` deploys to production.
 4. Confirm the live site serves the new build (see below).
 
@@ -29,7 +29,7 @@ Don't push straight to `main` unless you mean to ship: it goes live immediately.
 | Node.js | 24.x |
 | Domains | pocalab.app, www.pocalab.app, pocalab.com, www.pocalab.com, pocalab.vercel.app |
 
-The Vercel build command is `vite build`, not `npm run build`, so **Vercel does not type-check**. Run `npm run build` locally (or in CI once MAT-723 lands) before merging.
+The Vercel build command is `vite build`, not `npm run build`, so **Vercel does not type-check**. GitHub Actions CI (`.github/workflows/ci.yml`) covers this: every PR and every push to `main` runs lint, type-check and build, unit tests and browser tests. Merge only when CI is green.
 
 ## Checking what is live
 
