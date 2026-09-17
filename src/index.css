@@ -57,21 +57,22 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* Huntrix — dark mode (default) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0C0818;
-    --foreground: #EDD9FF;
-    --foreground-muted: #BBA8D4;
-    --surface: #160D30;
-    --border: #281A46;
-    --primary: #EE4897;
-    --primary-hover: #D0307F;
-    --primary-foreground: #fff;
-    --primary-muted: rgba(238, 72, 151, 0.12);
-    --primary-text: #EE4897; /* 5.65:1 on the dark background */
-    --destructive: #ef4444; /* 5.25:1 on the dark background */
-  }
+/* Huntrix — dark mode, the default regardless of OS setting.
+   The light values above apply only with <html data-theme="light">,
+   kept for a future theme toggle. */
+:root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --background: #0C0818;
+  --foreground: #EDD9FF;
+  --foreground-muted: #BBA8D4;
+  --surface: #160D30;
+  --border: #281A46;
+  --primary: #EE4897;
+  --primary-hover: #D0307F;
+  --primary-foreground: #fff;
+  --primary-muted: rgba(238, 72, 151, 0.12);
+  --primary-text: #EE4897; /* 5.65:1 on the dark background */
+  --destructive: #ef4444; /* 5.25:1 on the dark background */
 }
 
 *,

@@ -65,7 +65,7 @@ Presets: US Letter and A4 (3 × 3, 9 cards), 4 × 6 (2-up), 5 × 7 (2-up, 3-up, 
 
 ## Stack
 
-React 19 · TypeScript · Vite · pdf-lib · react-easy-crop · plain CSS with custom properties (light and dark themes) · Vercel.
+React 19 · TypeScript · Vite · pdf-lib · react-easy-crop · plain CSS with custom properties (dark theme by default, light theme kept for a future toggle) · Vercel.
 
 ## Project map
 
@@ -110,7 +110,7 @@ Deployed on Vercel: every push to `main` goes to production, and other branches 
 
 ## Accessibility
 
-WCAG 2.2 AA is the bar. The repo keeps its audit reports (`docs/audits/`) and the fixes they led to: keyboard-operable crop editor and upload zones, visible focus that is never hidden behind the sticky header or the mobile action bar, AA contrast in both themes, `prefers-reduced-motion`, live regions for the card count and export state, and a skip link.
+WCAG 2.2 AA is the bar. The repo keeps its audit reports (`docs/audits/`) and the fixes they led to: keyboard-operable crop editor and upload zones, visible focus that is never hidden behind the sticky header or the mobile action bar, AA contrast in the dark and light themes, `prefers-reduced-motion`, live regions for the card count and export state, and a skip link.
 
 ## More
 
