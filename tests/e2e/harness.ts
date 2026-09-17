@@ -13,7 +13,8 @@ import { solidPngDataUrl } from '../helpers/png'
 // backGroup: cards with the same group get the identical back image.
 export type SeedCard = { id: string; hue: number; copies?: number; ownBack?: boolean; backGroup?: number }
 
-export function setupApp(viewport = { width: 1280, height: 900 }) {
+// Pass { mobile: true } for a touch phone, which switches the app to its mobile layout.
+export function setupApp({ mobile = false } = {}) {
   let server: PreviewServer
   let browser: Browser
   let context: BrowserContext
@@ -37,7 +38,9 @@ export function setupApp(viewport = { width: 1280, height: 900 }) {
   })
 
   beforeEach(async () => {
-    context = await browser.newContext({ viewport, acceptDownloads: true })
+    context = await browser.newContext(mobile
+      ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, acceptDownloads: true }
+      : { viewport: { width: 1280, height: 900 }, acceptDownloads: true })
     // tsx compiles page.evaluate callbacks with an esbuild __name helper the page doesn't have.
     await context.addInitScript('globalThis.__name = (fn) => fn')
     page = await context.newPage()
