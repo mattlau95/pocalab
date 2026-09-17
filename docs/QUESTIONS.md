@@ -6,6 +6,9 @@ Things I couldn't decide or verify on my own. Newest at the bottom. Answer inlin
 
 1. **Case study on matthewclau.com is out of date after MAT-724.** It says units derive from `mmToPx` in `dimensions.ts` or `mmToPt` in `pdf.ts`; now both live in `src/utils/units.ts`, and `pdf.ts` / `printPdf.ts` / `layout.ts` became one `src/utils/sheetPdf.ts`. The README is updated. **Matthew is updating this himself later.**
 
+2. **Worth a test print to confirm the new guidance?** Epic 6 corrected the in-app advice from "enable borderless" to "borderless off", based on MAT-174's hardware notes. I can't print here, so nothing was verified on paper this session.
+3. **What next?** Epics 4.5 and 6 are shipped. Epic 5 (MAT-148, the two-hole calibration tool) is the remaining epic and was parked as post-MVP; its six tickets are still in the backlog.
+
 ## Resolved
 
 - **Should the Back sheet preview be mirrored?** No: the current order is easier to read. The modal now carries a note saying the PDF flips the back page so each back prints behind its own front. (2026-09-17)
