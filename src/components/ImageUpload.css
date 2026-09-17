@@ -16,6 +16,13 @@
   background: var(--primary-muted);
 }
 
+/* The file input is visually hidden, so show keyboard focus on the zone itself. */
+.upload-zone:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-color: var(--primary);
+}
+
 .upload-zone__prompt {
   color: var(--foreground-muted);
   margin: 0;
@@ -30,7 +37,7 @@
 }
 
 .upload-zone__prompt-link {
-  color: var(--primary-hover);
+  color: var(--primary-text);
   text-decoration: underline;
 }
 

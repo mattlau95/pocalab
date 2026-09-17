@@ -108,7 +108,7 @@
 }
 
 .deck-list__toolbar-btn--primary {
-  background: var(--primary);
+  background: var(--primary-fill);
   border: none;
   color: white;
 }
@@ -137,7 +137,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: white;
+  color: var(--foreground);
 }
 
 .deck-paper-label__name {
@@ -184,7 +184,7 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   padding: 6px 12px;
   border: 1.5px dashed var(--primary);
@@ -195,6 +195,13 @@
 
 .deck-section__add:hover {
   background: var(--primary-muted);
+}
+
+/* "+ Add image" labels wrap a visually-hidden file input; show focus on the label. */
+.deck-section__add:focus-within,
+.deck-bar__add:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .deck-add-sheet {
@@ -499,6 +506,12 @@
   border-color: var(--border);
 }
 
+/* The toolbar and paper-size options sit on a dark surface in both themes */
+.deck-list__toolbar .deck-paper-label,
+.paper-size-option .deck-paper-label {
+  color: #fff;
+}
+
 .paper-size-option--on {
   border-color: var(--primary);
 }
@@ -551,7 +564,7 @@
 }
 
 .feedback-prompt__link {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 600;
   text-decoration: none;
 }
@@ -576,7 +589,7 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   font-size: 14px;
   font-weight: 500;
@@ -588,7 +601,7 @@
 }
 
 .toast--error {
-  background: var(--destructive);
+  background: var(--destructive-fill);
   border-radius: 8px;
   white-space: normal;
   max-width: 360px;
@@ -695,7 +708,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--primary);
+    background: var(--primary-fill);
     color: var(--primary-foreground);
     border-radius: 8px;
     font-size: 15px;

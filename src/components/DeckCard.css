@@ -163,7 +163,7 @@
 }
 
 .copies-btn:hover:not(:disabled) {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border-color: var(--primary);
 }
@@ -221,8 +221,8 @@
 }
 
 .deck-card__remove-yes {
-  background: var(--destructive) !important;
-  border-color: var(--destructive) !important;
+  background: var(--destructive-fill) !important;
+  border-color: var(--destructive-fill) !important;
   color: #fff !important;
 }
 
@@ -267,7 +267,7 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border: none;
   cursor: pointer;

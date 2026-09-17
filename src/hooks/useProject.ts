@@ -2,6 +2,7 @@ import { useReducer, useEffect, useRef, useState } from 'react'
 import { createDeck, createProject, type Deck, type Project } from '../models/deck'
 import { PRESETS, DEFAULT_PRESET, type PrintPreset } from '../models/preset'
 import type { Card } from '../models/card'
+import { readStoredProject, writeStoredProject, LEGACY_LOCAL_KEYS } from '../utils/projectStore'
 
 const STORAGE_KEY = 'photocard-project'
 const LEGACY_KEY = 'photocard-deck'
@@ -22,6 +23,7 @@ type Action =
   | { type: 'SET_SHARED_BACK'; deckIndex: number; dataUrl: string | null }
   | { type: 'CLEAR_DECK'; deckIndex: number }
   | { type: 'MOVE_CARD'; fromDeck: number; toDeck: number; cardId: string }
+  | { type: 'HYDRATE'; project: Project }
 
 function updateDeck(decks: Deck[], index: number, updater: (d: Deck) => Deck): Deck[] {
   return decks.map((d, i) => i === index ? updater(d) : d)
@@ -143,6 +145,9 @@ function projectReducer(project: Project, action: Action): Project {
       return { ...project, decks: newDecks }
     }
 
+    case 'HYDRATE':
+      return action.project
+
     case 'RESET':
       return createProject()
 
@@ -151,48 +156,98 @@ function projectReducer(project: Project, action: Action): Project {
   }
 }
 
-function loadProject(): Project {
+// Guard against stale or partial data from an older build.
+function normalizeProject(parsed: Partial<Project> | null | undefined): Project {
+  const preset = PRESETS[parsed?.preset?.id as PrintPreset['id']] ?? DEFAULT_PRESET
+  const decks = parsed?.decks?.length ? parsed.decks : [createDeck()]
+  return { preset, decks }
+}
+
+// Projects written before IndexedDB lived in localStorage under STORAGE_KEY
+// (multi-deck) or LEGACY_KEY (single deck). Read them once, then remove them.
+function readLegacyLocalStorage(): Project | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Project
-      // Ensure preset is valid (guard against stale data)
-      const preset = PRESETS[parsed.preset?.id] ?? DEFAULT_PRESET
-      return { preset, decks: parsed.decks ?? [createDeck()] }
-    }
-    // Migrate legacy single-deck storage
+    if (raw) return normalizeProject(JSON.parse(raw) as Project)
     const legacy = localStorage.getItem(LEGACY_KEY)
     if (legacy) {
       const deck = { ...createDeck(), ...JSON.parse(legacy) } as Deck
-      localStorage.removeItem(LEGACY_KEY)
       return { preset: DEFAULT_PRESET, decks: [deck] }
     }
   } catch { /* storage unavailable or corrupt */ }
-  return createProject()
+  return null
+}
+
+function clearLegacyLocalStorage() {
+  try {
+    for (const key of LEGACY_LOCAL_KEYS) localStorage.removeItem(key)
+  } catch { /* ignore */ }
+}
+
+async function loadProject(): Promise<Project | null> {
+  let stored: Project | null
+  try {
+    stored = await readStoredProject()
+  } catch {
+    // IndexedDB unavailable (private mode, storage disabled): fall back to
+    // whatever localStorage has, without migrating it.
+    return readLegacyLocalStorage()
+  }
+  if (stored) return normalizeProject(stored)
+
+  const legacy = readLegacyLocalStorage()
+  if (legacy) {
+    try {
+      await writeStoredProject(legacy)
+      clearLegacyLocalStorage()
+    } catch { /* keep the localStorage copy if the migration write fails */ }
+  }
+  return legacy
+}
+
+// Blob URLs (frontSrc/backSrc) are session-only and never persisted.
+function toSerializable(project: Project): Project {
+  return {
+    ...project,
+    decks: project.decks.map(deck => ({
+      ...deck,
+      cards: deck.cards.map(card => {
+        const { frontSrc, backSrc, ...rest } = card
+        void frontSrc; void backSrc
+        return rest
+      }),
+    })),
+  }
 }
 
 export function useProject() {
-  const [project, dispatch] = useReducer(projectReducer, undefined, loadProject)
+  const [project, dispatch] = useReducer(projectReducer, undefined, createProject)
+  const [hydrated, setHydrated] = useState(false)
   const [storageWriteError, setStorageWriteError] = useState<string | null>(null)
   const hasShownStorageError = useRef(false)
 
+  // Load once on mount. Nothing is written until this has resolved, so the
+  // empty initial state can never overwrite a saved project.
   useEffect(() => {
-    try {
-      const serializable: Project = {
-        ...project,
-        decks: project.decks.map(deck => ({
-          ...deck,
-          cards: deck.cards.map(({ frontSrc: _f, backSrc: _b, ...rest }) => rest),
-        })),
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable))
-    } catch {
+    let cancelled = false
+    loadProject()
+      .then(saved => {
+        if (cancelled) return
+        if (saved) dispatch({ type: 'HYDRATE', project: saved })
+      })
+      .finally(() => { if (!cancelled) setHydrated(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    writeStoredProject(toSerializable(project)).catch(() => {
       if (!hasShownStorageError.current) {
         hasShownStorageError.current = true
-        setStorageWriteError("Couldn't save — storage may be full. Export your PDF to avoid losing work.")
+        setStorageWriteError("Couldn't save — storage may be full or unavailable. Export your PDF to avoid losing work.")
       }
-    }
-  }, [project])
+    })
+  }, [project, hydrated])
 
   function revokeCard(card: Card) {
     if (card.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(card.frontSrc)
@@ -201,6 +256,7 @@ export function useProject() {
 
   return {
     project,
+    hydrated,
     storageWriteError,
 
     setPreset: (preset: PrintPreset) => dispatch({ type: 'SET_PRESET', preset }),

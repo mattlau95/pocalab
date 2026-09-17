@@ -30,9 +30,20 @@
   --border: #F0DCCA;
   --primary: #EE4897;
   --primary-hover: #D0307F;
+  /* Filled controls with white text need >= 4.5:1 (WCAG 1.4.3);
+     #EE4897 is 3.49:1 against white, #D0307F is 4.76:1, #B52A6F is 5.96:1. */
+  --primary-fill: #D0307F;
+  --primary-fill-hover: #B52A6F;
+  /* Pink used *as text* on the page background: #D0307F is 4.62:1 on cream,
+     #EE4897 is 5.65:1 on the dark background; the dark theme swaps it. */
+  --primary-text: #D0307F;
   --primary-foreground: #fff;
   --primary-muted: rgba(238, 72, 151, 0.08);
-  --destructive: #ef4444;
+  /* Error text on the cream background: #ef4444 is 3.65:1, #B91C1C is 6.28:1.
+     --destructive-fill backs filled buttons/toasts with white text (6.28:1 in
+     both modes); the dark theme overrides --destructive back to #ef4444. */
+  --destructive: #B91C1C;
+  --destructive-fill: #B91C1C;
   --destructive-muted: rgba(239, 68, 68, 0.08);
   --destructive-border: rgba(239, 68, 68, 0.35);
 
@@ -46,19 +57,22 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* Huntrix — dark mode (default) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0C0818;
-    --foreground: #EDD9FF;
-    --foreground-muted: #BBA8D4;
-    --surface: #160D30;
-    --border: #281A46;
-    --primary: #EE4897;
-    --primary-hover: #D0307F;
-    --primary-foreground: #fff;
-    --primary-muted: rgba(238, 72, 151, 0.12);
-  }
+/* Huntrix — dark mode, the default regardless of OS setting.
+   The light values above apply only with <html data-theme="light">,
+   kept for a future theme toggle. */
+:root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --background: #0C0818;
+  --foreground: #EDD9FF;
+  --foreground-muted: #BBA8D4;
+  --surface: #160D30;
+  --border: #281A46;
+  --primary: #EE4897;
+  --primary-hover: #D0307F;
+  --primary-foreground: #fff;
+  --primary-muted: rgba(238, 72, 151, 0.12);
+  --primary-text: #EE4897; /* 5.65:1 on the dark background */
+  --destructive: #ef4444; /* 5.25:1 on the dark background */
 }
 
 *,
@@ -95,6 +109,21 @@ html {
   html {
     scroll-padding-bottom: 70px;
   }
+}
+
+/* Keeps an element in the accessibility tree and focusable, but off-screen.
+   Used for file inputs inside label-styled upload zones: `hidden` would make
+   them display:none and unreachable by keyboard. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .seo-lede {

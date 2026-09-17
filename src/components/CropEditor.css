@@ -171,7 +171,7 @@
 }
 
 .ctrl-btn:hover:not(:disabled) {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border-color: var(--primary);
 }
@@ -275,7 +275,7 @@
 }
 
 .ctrl-pill:hover:not(:disabled) {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border-color: var(--primary);
 }
@@ -286,7 +286,7 @@
 }
 
 .ctrl-pill--on {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
   border-color: var(--primary);
 }
@@ -350,6 +350,12 @@
   justify-content: flex-end;
 }
 
+/* "Replace image" is a label around a visually-hidden file input. */
+.crop-actions label:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .btn {
   padding: 8px 20px;
   border-radius: 6px;
@@ -376,12 +382,12 @@
 }
 
 .btn--primary {
-  background: var(--primary);
+  background: var(--primary-fill);
   color: var(--primary-foreground);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--primary-fill-hover);
 }
 
 @media (max-width: 639px) {

@@ -205,6 +205,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
 
       <div
         className="crop-viewport"
+        role="group"
         style={{ background: bgColor }}
         ref={viewportRef}
         tabIndex={0}
@@ -427,7 +428,7 @@ export function CropEditor({ imageSrc, label, initialState, onConfirm, onCancel,
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) { onReplace(f); e.target.value = '' } }}
-              hidden
+              className="visually-hidden"
             />
           </label>
         )}
