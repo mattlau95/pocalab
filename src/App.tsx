@@ -97,6 +97,17 @@ function expandDeck(deck: Deck) {
   return slots
 }
 
+// The slots each PDF builder actually prints, so the sheet preview matches the
+// download: Letter/A4 repeat each card by its copy count (createPhotocardPdf),
+// photo paper prints each card once (buildPrintPdf ignores copies).
+function printedSlots(deck: Deck, preset: PrintPreset) {
+  const isPhotoPaper = !['letter', 'a4'].includes(preset.id)
+  const slots = isPhotoPaper
+    ? deck.cards.map(card => ({ front: card.front, back: card.back ?? deck.sharedBack }))
+    : expandDeck(deck)
+  return slots.slice(0, preset.nUp)
+}
+
 type Step =
   | { id: 'idle' }
   | { id: 'crop-front'; imageSrc: string; editingPending?: Card; initialState?: CropState; targetDeck: number }
@@ -811,26 +822,24 @@ function App() {
         </div>
       )}
 
-      {previewDeckIndex !== null && (
-        <Modal onClose={() => setPreviewDeckIndex(null)} title="Sheet preview">
-          <div className="sheet-preview-pair">
-            <div className="sheet-preview-pair__sheet">
-              <span className="sheet-preview-pair__label">Front</span>
-              <SheetPreview
-                preset={project.preset}
-                thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.front) ?? []}
-              />
+      {previewDeckIndex !== null && (() => {
+        const deck = project.decks[previewDeckIndex]
+        const slots = deck ? printedSlots(deck, project.preset) : []
+        return (
+          <Modal onClose={() => setPreviewDeckIndex(null)} title="Sheet preview">
+            <div className="sheet-preview-pair">
+              <div className="sheet-preview-pair__sheet">
+                <span className="sheet-preview-pair__label">Front</span>
+                <SheetPreview preset={project.preset} thumbnails={slots.map(s => s.front)} />
+              </div>
+              <div className="sheet-preview-pair__sheet">
+                <span className="sheet-preview-pair__label">Back</span>
+                <SheetPreview preset={project.preset} thumbnails={slots.map(s => s.back)} />
+              </div>
             </div>
-            <div className="sheet-preview-pair__sheet">
-              <span className="sheet-preview-pair__label">Back</span>
-              <SheetPreview
-                preset={project.preset}
-                thumbnails={project.decks[previewDeckIndex]?.cards.map(c => c.back ?? project.decks[previewDeckIndex!]?.sharedBack ?? null) ?? []}
-              />
-            </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        )
+      })()}
 
       {showPaperSizeModal && (
         <Modal onClose={() => setShowPaperSizeModal(false)} title="Paper size">
