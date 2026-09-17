@@ -73,6 +73,11 @@ goes into shooting and collecting instead of fighting a layout.
 
 ---
 
+## Triaged — 2026-09-17
+
+- MAT-725: Sheet preview ignores card copies (the PDF includes them) (P1/Quick Win)
+- MAT-726: Replace the default Vite favicon with the pocalab two-cards icon (P2/Quick Win)
+
 ## 2026-06-21 — Deck sidebar layout
 
 The deck section on desktop was a flat column: label row, then the card grid below it, with `SheetPreview` crammed into the top-right of the header. On a wide viewport the grid took the full width and the preview sat at a small fixed size with nothing alongside it — wasted real estate, and the preview disappeared above the fold as soon as any cards were added.

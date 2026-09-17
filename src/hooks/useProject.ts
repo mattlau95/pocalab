@@ -220,11 +220,19 @@ function toSerializable(project: Project): Project {
   }
 }
 
+// 'idle' until the first change after load; 'saving' only once a write has
+// been pending long enough to notice, so fast writes don't flicker.
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+const SAVING_DELAY_MS = 400
+
 export function useProject() {
   const [project, dispatch] = useReducer(projectReducer, undefined, createProject)
   const [hydrated, setHydrated] = useState(false)
   const [storageWriteError, setStorageWriteError] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const hasShownStorageError = useRef(false)
+  const skipNextWrite = useRef(true)
+  const writeSeq = useRef(0)
 
   // Load once on mount. Nothing is written until this has resolved, so the
   // empty initial state can never overwrite a saved project.
@@ -241,12 +249,29 @@ export function useProject() {
 
   useEffect(() => {
     if (!hydrated) return
-    writeStoredProject(toSerializable(project)).catch(() => {
-      if (!hasShownStorageError.current) {
-        hasShownStorageError.current = true
-        setStorageWriteError("Couldn't save — storage may be full or unavailable. Export your PDF to avoid losing work.")
-      }
-    })
+    // The first project seen after hydration is the one just loaded (or the
+    // empty default); it is already what storage holds.
+    if (skipNextWrite.current) {
+      skipNextWrite.current = false
+      return
+    }
+    // Writes can finish out of order; only the latest one sets the status.
+    const seq = ++writeSeq.current
+    const savingTimer = setTimeout(() => {
+      if (seq === writeSeq.current) setSaveStatus('saving')
+    }, SAVING_DELAY_MS)
+    writeStoredProject(toSerializable(project))
+      .then(() => {
+        if (seq === writeSeq.current) setSaveStatus('saved')
+      })
+      .catch(() => {
+        if (seq === writeSeq.current) setSaveStatus('error')
+        if (!hasShownStorageError.current) {
+          hasShownStorageError.current = true
+          setStorageWriteError("Couldn't save — storage may be full or unavailable. Export your PDF to avoid losing work.")
+        }
+      })
+      .finally(() => clearTimeout(savingTimer))
   }, [project, hydrated])
 
   function revokeCard(card: Card) {
@@ -258,6 +283,7 @@ export function useProject() {
     project,
     hydrated,
     storageWriteError,
+    saveStatus,
 
     setPreset: (preset: PrintPreset) => dispatch({ type: 'SET_PRESET', preset }),
 
