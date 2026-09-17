@@ -73,6 +73,36 @@ goes into shooting and collecting instead of fighting a layout.
 
 ---
 
+## 2026-09-17 — Epic 6: printer guidance and polish (MAT-149)
+
+Straight after Epic 4.5, in the same session.
+
+| PR | Ticket | What |
+|---|---|---|
+| #11 | MAT-174 | The validated ET-8550 print settings, in the app for every paper size and in `docs/printing.md` |
+| #12 | MAT-175 | Print-time checklist, image decode errors, and the phone layout fix |
+
+### The advice was wrong, and the hardware notes said so
+
+The deck screen had a photo-paper-only tip telling people to **enable** borderless. MAT-174's spike on the ET-8550 found the opposite: borderless silently upscales the page 2–3 % to bleed off the edges, and that caused *both* the size error and the front/back misalignment seen in testing. The photo-paper presets centre cards with real margins — 5.3 mm on 4 × 6 — so nothing needs to reach the paper edge.
+
+`PrintGuidance` now shows the validated list for every preset, naming the sheet size you picked: Acrobat's Actual size, matching paper size in both places, borderless off, the Rear Paper Feeder rather than the slot that clips 20 mm, the long-edge flip, and re-selecting the paper source on the second pass because the driver resets to Cassette 2 every job. `docs/printing.md` carries the same settings plus how to check a print: measure across the trim marks, hold a cut card to the light.
+
+### Two audit items with tests that prove them
+
+- **Undecodable images (#17).** A file the browser accepts by type but can't decode gave a blank crop frame with a working Confirm button, which then failed at export. The crop editor now says the image couldn't be opened and disables Confirm until a readable one replaces it. Tested with a file that claims `image/png` and holds text.
+- **Crop editor overflow on a phone (#14).** A range input won't shrink below its intrinsic width, so the Rotate and Size rows pushed the page 9 px past a 390 px viewport and the whole screen scrolled sideways. `min-width: 0` plus narrower label and readout columns under 640 px fixed it. `tests/e2e/responsive.e2e.ts` asserts every screen fits a phone, and fails on the old CSS with "crop editor: page scrolls sideways (399 > 390)".
+
+### Checklist placement
+
+The "Before you print" panel first landed below the upload zone, which put it a long way from the button that had just been pressed. Moved directly under the export actions. On phones it sits between two blocks that are hidden, so a mobile test checks it is still visible and doesn't widen the page.
+
+### Not verified
+
+No physical print this session. The wording follows MAT-174's hardware notes; a test print is still worth doing.
+
+---
+
 ## 2026-09-17 — Epic 4.5: hardening and launch readiness (MAT-721)
 
 All five Epic 4.5 tickets shipped in one session, plus two triaged fixes. Every change went through a PR with CI, and pocalab.app deploys from `main`.
