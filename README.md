@@ -106,7 +106,7 @@ npm run lint
 node --test tests/printLayout.spec.ts
 ```
 
-Deployed on Vercel from `main`.
+Deployed on Vercel: every push to `main` goes to production, and other branches get preview URLs. See [docs/deploy.md](docs/deploy.md).
 
 ## Accessibility
 
