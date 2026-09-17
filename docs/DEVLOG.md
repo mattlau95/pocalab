@@ -73,6 +73,47 @@ goes into shooting and collecting instead of fighting a layout.
 
 ---
 
+## 2026-09-17 — Epic 4.5: hardening and launch readiness (MAT-721)
+
+All five Epic 4.5 tickets shipped in one session, plus two triaged fixes. Every change went through a PR with CI, and pocalab.app deploys from `main`.
+
+| PR | Ticket | What |
+|---|---|---|
+| #1 | MAT-722 | P0 audit fixes merged with `main`'s toolbar refactor; dark mode made the default; deploy documented in `docs/deploy.md` |
+| #2 | MAT-415 | Header save status (Saved / Saving… / Not saved) and export progress ("Generating… 3 / 9") |
+| #3 | MAT-725 | Sheet preview shows copies, using the same slots as the PDF |
+| #4 | MAT-726 | Favicon and iOS icon from the two-cards mark |
+| #5 | MAT-723 | Lint 8 → 0, `npm test` + `npm run test:e2e`, GitHub Actions CI with badge |
+| #6 | MAT-724 | `units.ts`, one PDF pipeline (`sheetPdf.ts`) for every paper size, App.tsx 853 → 119 lines |
+| #7 | MAT-416 | Accessible Modal, ConfirmDialog replacing every `window.confirm`, Undo for removals, logo link, 24 px targets |
+| #8 | none | Docs said the bleed crop is 697 px wide; the code has always made 696 |
+
+### Tests as the safety net
+
+MAT-723 came before the refactors on purpose. Two kinds of test carry the weight:
+
+- **PDF operator snapshots.** `tests/pdf.spec.ts` decodes each page's content stream, normalises image names and rounds numbers to 0.001 pt, and snapshots it. When MAT-724 merged the Letter/A4 builder and the photo-paper builder into one pipeline on top of `layout()`, the snapshot for all six presets was unchanged. That is the evidence the refactor didn't move a single mark.
+- **Browser flows.** `tests/e2e/` drives the production build in Chromium: persistence past 10 MB, the full add/edit/back-scope flows, exports, paper size re-flow, dialogs and keyboard focus, and axe-core plus a 24 px target check on every screen. Flow tests were written against the old App.tsx before the split, so the split had to keep them green. There are 35 in CI now.
+
+### Bugs found along the way
+
+- **"Try again" after a failed "Download all sheets" retried sheet 1 only**: the retry index was `null` and fell back to 0. Fixed in #6, with a test that fails on the old code.
+- **The Move menu's "Sheet N" button failed contrast on hover**: opacity faded white text below 4.5:1. axe caught it; the hover now darkens the fill.
+- **A suspected auto-fill bug wasn't one.** The test uploaded 697 × 1051, but `mmToPx` floors 696.85 to 696, so only 696 × 1051 exports auto-fill. The README and comments had said 697 since the crop tool was built.
+
+### Decisions
+
+- Dark mode is the default regardless of OS setting; light theme values stay behind `data-theme="light"` for a future toggle. (Matthew)
+- Merge only after CI is green; Vercel's `vite build` doesn't type-check, CI does.
+- The shared PDF pipeline now throws on an unreadable image instead of silently skipping it on photo paper, matching Letter's "PDF generation failed" behaviour.
+- The "Remove this card?" confirmation stays even though Undo exists; open question.
+
+### Open
+
+`docs/QUESTIONS.md` lists what needs Matthew: iPhone refresh check (MAT-415), favicon check (MAT-726), mirrored Back preview, header count ignoring copies across sheets, the external case study, the remove-card confirmation and Undo duration, and 696 vs 697 px crop width.
+
+---
+
 ## Triaged — 2026-09-17
 
 - MAT-725: Sheet preview ignores card copies (the PDF includes them) (P1/Quick Win)
