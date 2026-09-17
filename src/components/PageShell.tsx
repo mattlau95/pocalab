@@ -3,7 +3,7 @@ import { AppHeader } from './AppHeader'
 
 interface Props {
   onHome?: () => void
-  homeCursor?: boolean
+  homeLink?: boolean
   headerStatus?: ReactNode
   mainClassName?: string
   busy?: boolean
@@ -13,10 +13,10 @@ interface Props {
 }
 
 // Every screen: the header, the skip-link target <main>, then overlays.
-export function PageShell({ onHome, homeCursor, headerStatus, mainClassName = 'app-main', busy, children, overlays }: Props) {
+export function PageShell({ onHome, homeLink, headerStatus, mainClassName = 'app-main', busy, children, overlays }: Props) {
   return (
     <div className="app">
-      <AppHeader onHome={onHome} homeCursor={homeCursor} status={headerStatus} />
+      <AppHeader onHome={onHome} homeLink={homeLink} status={headerStatus} />
       <main id="main-content" className={mainClassName} aria-busy={busy}>
         {children}
       </main>

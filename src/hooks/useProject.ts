@@ -3,6 +3,7 @@ import { createDeck, createProject, type Deck, type Project } from '../models/de
 import { PRESETS, DEFAULT_PRESET, type PrintPreset } from '../models/preset'
 import type { Card } from '../models/card'
 import { readStoredProject, writeStoredProject, LEGACY_LOCAL_KEYS } from '../utils/projectStore'
+import { revokeBlobUrl } from '../utils/blobUrls'
 
 const STORAGE_KEY = 'photocard-project'
 const LEGACY_KEY = 'photocard-deck'
@@ -218,6 +219,21 @@ function toSerializable(project: Project): Project {
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 const SAVING_DELAY_MS = 400
 
+// How long "Undo" stays available after removing a card or sheet.
+export const UNDO_MS = 6000
+
+type Removal = {
+  message: string
+  before: Project
+  after: Project
+  removedCards: Card[]
+}
+
+function revokeCard(card: Card) {
+  revokeBlobUrl(card.frontSrc)
+  revokeBlobUrl(card.backSrc)
+}
+
 export function useProject() {
   const [project, dispatch] = useReducer(projectReducer, undefined, createProject)
   const [hydrated, setHydrated] = useState(false)
@@ -226,6 +242,7 @@ export function useProject() {
   const hasShownStorageError = useRef(false)
   const skipNextWrite = useRef(true)
   const writeSeq = useRef(0)
+  const [removal, setRemoval] = useState<Removal | null>(null)
 
   // Load once on mount. Nothing is written until this has resolved, so the
   // empty initial state can never overwrite a saved project.
@@ -267,10 +284,27 @@ export function useProject() {
       .finally(() => clearTimeout(savingTimer))
   }, [project, hydrated])
 
-  function revokeCard(card: Card) {
-    if (card.frontSrc?.startsWith('blob:')) URL.revokeObjectURL(card.frontSrc)
-    if (card.backSrc?.startsWith('blob:')) URL.revokeObjectURL(card.backSrc)
+  // Once Undo is no longer offered, release the removed cards' uploads.
+  useEffect(() => {
+    if (!removal) return
+    const timer = setTimeout(() => {
+      removal.removedCards.forEach(revokeCard)
+      setRemoval(null)
+    }, UNDO_MS)
+    return () => clearTimeout(timer)
+  }, [removal])
+
+  // Removals apply immediately and stay undoable for UNDO_MS, as long as
+  // nothing else has changed the project since.
+  function remove(action: Action, message: string, removedCards: Card[]) {
+    const after = projectReducer(project, action)
+    if (after === project) return
+    if (removal) removal.removedCards.forEach(revokeCard)
+    dispatch({ type: 'HYDRATE', project: after })
+    setRemoval({ message, before: project, after, removedCards })
   }
+
+  const undoableRemoval = removal && project === removal.after ? removal : null
 
   return {
     project,
@@ -282,19 +316,21 @@ export function useProject() {
 
     addDeck: () => dispatch({ type: 'ADD_DECK' }),
 
-    removeDeck: (deckIndex: number) => {
-      const deck = project.decks[deckIndex]
-      if (deck) deck.cards.forEach(revokeCard)
-      dispatch({ type: 'REMOVE_DECK', deckIndex })
-    },
+    removeDeck: (deckIndex: number) =>
+      remove({ type: 'REMOVE_DECK', deckIndex }, `Sheet ${deckIndex + 1} removed`, project.decks[deckIndex]?.cards ?? []),
 
     addCard: (deckIndex: number, card: Card) =>
       dispatch({ type: 'ADD_CARD', deckIndex, card }),
 
-    removeCard: (deckIndex: number, id: string) => {
-      const card = project.decks[deckIndex]?.cards.find(c => c.id === id)
-      if (card) revokeCard(card)
-      dispatch({ type: 'REMOVE_CARD', deckIndex, id })
+    removeCard: (deckIndex: number, id: string) =>
+      remove({ type: 'REMOVE_CARD', deckIndex, id }, 'Card removed', project.decks[deckIndex]?.cards.filter(c => c.id === id) ?? []),
+
+    // The last removal, while it can still be undone.
+    removalMessage: undoableRemoval?.message ?? null,
+
+    undoRemoval: () => {
+      if (undoableRemoval) dispatch({ type: 'HYDRATE', project: undoableRemoval.before })
+      setRemoval(null)
     },
 
     setCopies: (deckIndex: number, id: string, count: number) =>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Card } from '../models/card'
-import { Modal } from './Modal'
+import { ConfirmDialog } from './ConfirmDialog'
 import './DeckCard.css'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -60,13 +60,13 @@ export function DeckCard({ card, copies, maxCopies, onCopiesChange, onRemove, on
       </button>
 
       {confirmingRemove && (
-        <Modal onClose={() => setConfirmingRemove(false)}>
-          <p className="deck-card__remove-prompt">Remove this card?</p>
-          <div className="deck-card__remove-actions">
-            <button className="btn btn--primary deck-card__remove-yes" onClick={handleRemove}>Remove</button>
-            <button className="btn btn--ghost deck-card__remove-no" onClick={() => setConfirmingRemove(false)}>Cancel</button>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          message="Remove this card?"
+          confirmLabel="Remove"
+          destructive
+          onConfirm={() => { setConfirmingRemove(false); handleRemove() }}
+          onCancel={() => setConfirmingRemove(false)}
+        />
       )}
 
       <div className="deck-card__thumbs">

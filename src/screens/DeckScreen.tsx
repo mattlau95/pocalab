@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { deckTotal, type useProject } from '../hooks/useProject'
 import type { useCardFlow } from '../hooks/useCardFlow'
 import type { useExport } from '../hooks/useExport'
+import type { Confirm } from '../hooks/useConfirm'
 import { PRESETS } from '../models/preset'
 import { PageShell } from '../components/PageShell'
 import { DeckPaperLabel } from '../components/DeckPaperLabel'
@@ -28,12 +29,13 @@ interface Props {
   onDismissFeedback: () => void
   storageToast: string | null
   onDismissStorageToast: () => void
+  confirm: Confirm
 }
 
 // The idle screen: the first-run upload, or the deck with its sheets, export
 // actions, sheet preview and paper size picker.
-export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onDismissFeedback, storageToast, onDismissStorageToast }: Props) {
-  const { project, saveStatus, setPreset, removeCard, setCopies, addDeck, removeDeck, moveCard } = projectApi
+export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onDismissFeedback, storageToast, onDismissStorageToast, confirm }: Props) {
+  const { project, saveStatus, setPreset, removeCard, setCopies, addDeck, removeDeck, moveCard, removalMessage, undoRemoval } = projectApi
   const nUp = project.preset.nUp
   const [previewDeckIndex, setPreviewDeckIndex] = useState<number | null>(null)
   const [showPaperSizeModal, setShowPaperSizeModal] = useState(false)
@@ -63,10 +65,11 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
     return Math.max(0, project.decks.findIndex(d => deckTotal(d) < nUp))
   }
 
-  function handleRemoveDeck(deckIndex: number) {
+  async function handleRemoveDeck(deckIndex: number) {
     const deck = project.decks[deckIndex]
     if (deck && deck.cards.length > 0) {
-      if (!window.confirm(`Remove Sheet ${deckIndex + 1} and its ${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}?`)) return
+      const message = `Remove Sheet ${deckIndex + 1} and its ${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}?`
+      if (!(await confirm({ message, confirmLabel: 'Remove sheet', destructive: true }))) return
     }
     removeDeck(deckIndex)
   }
@@ -96,7 +99,12 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
 
   const overlays = (
     <>
-      {(flow.cardAdded || splitToast) && (
+      {removalMessage ? (
+        <div className="toast toast--undo" role="status" aria-live="polite">
+          {removalMessage}
+          <button className="toast__action" onClick={undoRemoval}>Undo</button>
+        </div>
+      ) : (flow.cardAdded || splitToast) && (
         <div className="toast" role="status" aria-live="polite">
           {splitToast ?? 'Card added to deck'}
         </div>
@@ -149,7 +157,7 @@ export function DeckScreen({ projectApi, flow, exporter, showFeedbackPrompt, onD
   return (
     <PageShell
       onHome={flow.goHome}
-      homeCursor={anyCards}
+      homeLink={anyCards}
       headerStatus={headerStatus}
       mainClassName={`app-main${anyCards ? ' app-main--with-bar' : ''}`}
       overlays={overlays}

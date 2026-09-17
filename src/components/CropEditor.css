@@ -181,8 +181,10 @@
   cursor: not-allowed;
 }
 
+/* 24px tall so the whole row is a pointer target (WCAG 2.5.8); the track stays thin. */
 .ctrl-slider {
   flex: 1;
+  height: 24px;
   accent-color: var(--primary);
   cursor: pointer;
 }
@@ -239,6 +241,7 @@
   border-radius: 3px;
   font-family: inherit;
   padding: 1px 3px;
+  min-height: 24px;
   cursor: text;
   appearance: none;
   -webkit-appearance: none;

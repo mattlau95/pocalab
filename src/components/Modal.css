@@ -25,6 +25,7 @@
 }
 
 .modal__title {
+  margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: var(--foreground);
@@ -38,4 +39,26 @@
 
 .modal__close-btn {
   min-width: 80px;
+}
+
+.confirm-dialog__message {
+  font-size: 14px;
+  color: var(--foreground);
+  margin-bottom: 16px;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Destructive confirm: white on #B91C1C is 6.28:1; the hover darkens it. */
+.btn--destructive {
+  background: var(--destructive-fill);
+  color: #fff;
+}
+
+.btn--destructive:hover:not(:disabled) {
+  background: #991B1B;
 }
